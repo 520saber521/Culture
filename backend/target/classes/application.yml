@@ -1,0 +1,133 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  application:
+    name: cultural-backend
+  
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+  
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:db/insert_sample_data.sql
+      continue-on-error: true
+  
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/cultural_db?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+    username: root
+    password: 123456
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 30000
+      pool-name: CulturalHikariCP
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      connection-init-sql: SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci
+  
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+      fail-on-empty-beans: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+  
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+      enabled: true
+  
+  messages:
+    encoding: UTF-8
+    basename: messages
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.cultural.entity
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+      table-prefix: 
+    banner: false
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    default-executor-type: reuse
+    jdbc-type-for-null: null
+    cache-enabled: true
+    lazy-loading-enabled: true
+
+jwt:
+  secret: YourSuperSecretKeyForJWTTokenGenerationMustBeAtLeast256BitsLong
+  expiration: 86400000
+  header: Authorization
+  prefix: "Bearer "
+
+logging:
+  level:
+    com.cultural: debug
+    org.springframework.security: info
+    org.springframework.web: info
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/cultural-backend.log
+    max-size: 10MB
+    max-history: 30
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+    swagger-model-name: 实体类列表
+    enable-version: true
+    enable-reload-cache-parameter: true
+    enable-after-script: true
+    enable-document-manage: true
+    enable-debug: true
+    enable-search: true
+    enable-open-api: false
+    enable-group: true
+  openapi:
+    title: 江苏文化传承与创新平台 API文档
+    description: 江苏文化传承与创新平台后端API接口文档，支持中文搜索和展示
+    version: 1.0.0
+    contact:
+      name: 开发团队
+      email: dev@cultural.com
+    group:
+      default:
+        group-name: 默认分组
+        api-rule: package
+        api-rule-resources:
+          - com.cultural.controller
+
+app:
+  upload:
+    path: uploads/
+    max-size: 52428800
+    allowed-types: jpg,jpeg,png,gif,mp4,pdf
+  search:
+    history-days: 30
+    hot-keywords-limit: 10
+  sensitive:
+    enabled: true
+    words-file: config/sensitive-words.txt
