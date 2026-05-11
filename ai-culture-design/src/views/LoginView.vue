@@ -1,3 +1,7 @@
+<script setup>
+const baseUrl = import.meta.env.BASE_URL
+</script>
+
 <template>
   <div 
     class="login-page" 
@@ -61,7 +65,7 @@
         <div class="brand-bg-pattern"></div>
         <div class="brand-content">
           <div class="brand-logo-wrapper">
-            <img src="/logo1.png" alt="logo" class="brand-logo" />
+            <img :src="baseUrl + 'logo1.png'" alt="logo" class="brand-logo" />
           </div>
           <h1 class="brand-title">AI文化设计平台</h1>
           <p class="brand-subtitle">传承文化精髓 · 创意无限可能</p>
@@ -120,7 +124,7 @@
         <div class="form-card" :class="{ 'card-hover': isContainerHovered }">
           <div class="form-header">
             <div class="mobile-logo">
-              <img src="/logo1.png" alt="logo" class="mobile-brand-logo" />
+              <img :src="baseUrl + 'logo1.png'" alt="logo" class="mobile-brand-logo" />
             </div>
             <h2 class="form-title">{{ activeTab === 'login' ? '欢迎回来' : '创建账号' }}</h2>
             <p class="form-subtitle">{{ activeTab === 'login' ? '登录您的账号继续探索' : '注册新账号开启创意之旅' }}</p>

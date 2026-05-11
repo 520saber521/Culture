@@ -1,3 +1,7 @@
+<script setup>
+const baseUrl = import.meta.env.BASE_URL
+</script>
+
 <template>
   <div class="ai-design-page">
     <div class="bg-decoration">
@@ -9,7 +13,7 @@
     <aside class="sidebar glass-panel">
       <div class="sidebar-header">
         <div class="logo">
-          <img src="/logo1.png" alt="logo" class="logo-img" />
+          <img :src="baseUrl + 'logo1.png'" alt="logo" class="logo-img" />
           <div>
             <span class="logo-kicker">Cultural Studio</span>
             <span class="logo-text">AI设计</span>

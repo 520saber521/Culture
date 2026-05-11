@@ -673,7 +673,7 @@ function goToSlide(index) {
 }
 
 // 视频背景HTML
-const videoBackgroundHtml = ref('<video class="carousel-bg-video" autoplay muted loop playsinline><source src="/Homepagebackgroundvideo1.mp4" type="video/mp4">您的浏览器不支持视频播放。</video>')
+const videoBackgroundHtml = ref(`<video class="carousel-bg-video" autoplay muted loop playsinline><source src="${import.meta.env.BASE_URL}Homepagebackgroundvideo1.mp4" type="video/mp4">您的浏览器不支持视频播放。</video>`)
 
 // 内容区域的动画状态
 const featuresVisible = ref(false)
@@ -1233,22 +1233,23 @@ const reportList = ref([
 ])
 
 // 轮播图数据
+const baseUrl = import.meta.env.BASE_URL
 const carouselItems = ref([
   {
     type: 'video',
-    src: '/Homepagebackgroundvideo1.mp4',
+    src: `${baseUrl}Homepagebackgroundvideo1.mp4`,
     title: '江苏文化传承与创新',
     description: '探索江苏丰富的文化遗产，感受传统文化与现代科技的完美融合'
   },
   {
     type: 'image',
-    src: '/Homepagebackground2.png',
+    src: `${baseUrl}Homepagebackground2.png`,
     title: '江苏非物质文化遗产',
     description: '品味江苏独特的非遗文化，体验传统工艺的魅力'
   },
   {
     type: 'video',
-    src: '/backgroundvideo2.mp4',
+    src: `${baseUrl}backgroundvideo2.mp4`,
     title: '江苏文化地图',
     description: '跟随地图探索江苏各地的文化特色，感受地域文化的多样性'
   },
