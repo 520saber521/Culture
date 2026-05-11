@@ -9,6 +9,8 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -23,7 +25,6 @@ jobs:
       - name: Install dependencies and build
         working-directory: ./ai-culture-design
         run: |
-          ls -la
           npm install
           npx vite build --base=/Culture/
 
