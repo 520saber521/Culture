@@ -1,0 +1,32 @@
+{
+  "name": "ai-culture-design",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5173 --force",
+    "start": "npm run dev",
+    "serve": "npm run dev",
+    "build": "vite build",
+    "build:prod": "vite build --mode production",
+    "build:gh-pages": "vite build --base=/Cultural/",
+    "preview": "vite preview",
+    "install:clean": "rimraf node_modules package-lock.json && npm install",
+    "deploy": "gh-pages -d dist"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
+    "@surely-vue/table": "^5.0.12",
+    "element-plus": "^2.11.4",
+    "fullpage.js": "^4.0.37",
+    "vue": "^3.5.22",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "cheerio": "^1.2.0",
+    "less": "^4.4.2",
+    "node-fetch": "^3.3.2",
+    "vite": "^7.1.7"
+  }
+}
