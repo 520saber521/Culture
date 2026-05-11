@@ -20,13 +20,11 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        working-directory: ai-culture-design
-        run: npm ci
-
-      - name: Build for production
-        working-directory: ai-culture-design
-        run: npm run build:gh-pages
+      - name: Install dependencies and build
+        run: |
+          cd ai-culture-design
+          npm ci
+          npm run build:gh-pages
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
