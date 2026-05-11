@@ -1,7 +1,3 @@
-<script setup>
-const baseUrl = import.meta.env.BASE_URL
-</script>
-
 <template>
   <div class="ai-design-page">
     <div class="bg-decoration">
@@ -263,6 +259,7 @@ import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { generateCultureDesign, generateJiangsuCultureImage } from '../AI-API'
 import { ElMessage } from 'element-plus'
 
+const baseUrl = import.meta.env.BASE_URL
 const userInput = ref('')
 const messages = ref([])
 const isGenerating = ref(false)

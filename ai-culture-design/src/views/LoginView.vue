@@ -1,7 +1,3 @@
-<script setup>
-const baseUrl = import.meta.env.BASE_URL
-</script>
-
 <template>
   <div 
     class="login-page" 
@@ -340,6 +336,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { authApi, setToken, getToken } from '@/utils/api'
 
+const baseUrl = import.meta.env.BASE_URL
 const router = useRouter()
 const loginPageRef = ref(null)
 const activeTab = ref('login')
