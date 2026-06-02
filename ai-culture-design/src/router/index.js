@@ -1,5 +1,5 @@
 // src/router/index.js
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHashHistory } from 'vue-router';
 
 // 1. 导入页面组件
 import HomeView from '../views/HomeView.vue';
@@ -35,7 +35,7 @@ const routes = [
 
 // 3. 创建并导出路由实例
 const router = createRouter({
-    history: createWebHistory(import.meta.env.BASE_URL),
+    history: createWebHashHistory(),
     routes
 });
 
