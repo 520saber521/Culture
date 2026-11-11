@@ -10,7 +10,13 @@ lerna-debug.log*
 node_modules/
 dist/
 dist-ssr/
+target/
+logs/
+*.class
 *.local
+
+# Local recoverable backups created while normalizing the repository.
+.local-backups/
 
 # Editor directories and files
 .vscode/*

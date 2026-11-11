@@ -1,0 +1,24 @@
+{
+  "name": "cultural-backend-node",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Serverless Node.js API for the Jiangsu cultural platform",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "test": "node --test",
+    "check": "node --check src/app.js && node --check src/index.js && node --check api/index.js"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.6",
+    "@supabase/supabase-js": "^2.119.0",
+    "@upstash/redis": "^1.41.0",
+    "dotenv": "^18.0.10",
+    "hono": "^4.13.17",
+    "zod": "^4.6.7"
+  }
+}

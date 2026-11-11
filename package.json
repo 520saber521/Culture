@@ -1,5 +1,16 @@
 {
-  "dependencies": {
-    "echarts": "^6.0.0"
+  "name": "cultural-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "江苏文化传承与创新平台",
+  "scripts": {
+    "install:all": "npm --prefix apps/web ci && npm --prefix apps/api ci",
+    "dev:web": "npm --prefix apps/web run dev",
+    "dev:api": "npm --prefix apps/api run dev",
+    "build": "npm run build:web && npm run check:web && npm run check:api",
+    "build:web": "npm --prefix apps/web run build",
+    "check:web": "npm --prefix apps/web run check:scripts",
+    "check:api": "npm --prefix apps/api run check",
+    "test": "npm --prefix apps/api test"
   }
 }

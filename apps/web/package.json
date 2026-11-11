@@ -1,0 +1,39 @@
+{
+  "name": "cultural-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3000 --force",
+    "start": "npm run dev",
+    "serve": "npm run dev",
+    "build": "vite build",
+    "build:prod": "vite build --mode production",
+    "preview": "vite preview",
+    "serve:dist": "node scripts/serve-static.mjs",
+    "crawl:images": "node scripts/crawler.mjs",
+    "check:scripts": "node --check scripts/crawler.mjs && node --check scripts/serve-static.mjs",
+    "install:clean": "rimraf node_modules package-lock.json && npm install"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
+    "@surely-vue/table": "^5.0.12",
+    "@tiptap/pm": "^3.33.0",
+    "@tiptap/starter-kit": "^3.33.0",
+    "@tiptap/vue-3": "^3.33.0",
+    "echarts": "^6.1.0",
+    "element-plus": "^2.11.4",
+    "fullpage.js": "^4.0.37",
+    "maplibre-gl": "^6.17.0",
+    "motion-v": "^2.11.1",
+    "vue": "^3.5.22",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "cheerio": "^1.2.0",
+    "less": "^4.4.2",
+    "node-fetch": "^3.3.2",
+    "vite": "^7.1.7"
+  }
+}
