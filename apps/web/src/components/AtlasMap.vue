@@ -1,15 +1,16 @@
 <template>
   <div ref="host" class="atlas-map" :class="{ 'map-ready': ready, 'map-fallback': fallback }">
     <canvas v-if="!fallback" ref="canvas" aria-hidden="true" @pointermove="pick" @pointerleave="clearHover" @click="pick($event, true)" />
-    <svg v-if="fallback" class="flat-map" :viewBox="mapViewBox" aria-label="江苏十三市地图">
+    <svg v-if="fallback" class="flat-map" :viewBox="flatViewBox" aria-label="江苏十三市地图">
       <path v-for="body in waterBodies" :key="body.id" :d="waterPath(body.polygons)" class="flat-water" :style="{fill:waterStyle[body.kind]}" fill-rule="evenodd" />
       <path :d="waterPath(lakeIslands)" class="flat-islands" fill-rule="evenodd" />
       <path v-for="region in regions" :key="region.id" :d="waterPath(dryLand[region.id])" fill-rule="evenodd"
         :class="{ highlighted: hover === region.id || selected === region.id, muted: counts && !counts[region.id] }"
         @pointerenter="emit('hover', region.id)" @pointerleave="emit('hover', null)" @click="choose(region.id)" />
       <path v-for="region in regions" :key="`hit-${region.id}`" :d="region.path" class="flat-hit" @pointerenter="emit('hover',region.id)" @pointerleave="emit('hover',null)" @click="choose(region.id)" />
+      <path v-for="body in waterBodies" :key="`water-hit-${body.id}`" :d="waterPath(body.polygons)" class="flat-water-hit" fill-rule="evenodd" @pointermove="showWaterTip(body.id,$event)" @pointerleave="clearHover" @click.stop="emit('water-select',body.id)" />
     </svg>
-    <div class="map-labels" :inert="phase !== 'overview' || !active">
+    <div class="map-labels" :inert="phase !== 'overview' || !active || !!waterFocus">
       <button v-for="(region, index) in regions" :key="region.id" :ref="el => labels[region.id] = el"
         class="map-city" :class="{ highlighted: hover === region.id, recent: recent === region.id, muted: counts && !counts[region.id] }"
         :style="{ '--label-delay': `${index * 32}ms` }" :aria-label="`探索${region.name}文化`" :aria-description="recent === region.id ? '刚刚浏览过这座城市' : undefined"
@@ -19,15 +20,25 @@
       </button>
     </div>
     <span v-if="!ready" class="map-loading" role="status">正在展开江苏山水…</span>
+    <span v-if="waterTip && active && phase === 'overview'" class="water-tip" :style="{left:`${tipPosition.x}px`,top:`${tipPosition.y}px`}" role="tooltip">{{ waterStories[waterTip].title }}<small>点击读水岸故事 ↗</small></span>
   </div>
 </template>
 
 <script setup>
-import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { waterStories } from '@/data/atlas/water-stories'
 import { regions, bounds, mapViewBox } from '@/data/atlas/geometry'
 import { createWater, makeShapes, waterBodies, dryLand, lakeIslands, waterPath, waterStyle } from '@/data/atlas/water'
-const props = defineProps({ active: Boolean, selected: String, hover: String, phase: String, counts: Object, recent: String, reduced: Boolean })
-const emit = defineEmits(['select', 'hover', 'ready'])
+const props = defineProps({ active: Boolean, selected: String, hover: String, phase: String, counts: Object, recent: String, reduced: Boolean, waterFocus: String })
+const emit = defineEmits(['select', 'hover', 'ready', 'water-select'])
+const waterTip=ref(null),tipPosition=ref({x:0,y:0})
+const flatViewBox=computed(()=>{const f=waterStories[props.waterFocus];return f ? `${f.center[0]-f.span[0]/2} ${-f.center[1]-f.span[1]/2} ${f.span[0]} ${f.span[1]}` : mapViewBox})
+function showWaterTip(id,event) {
+  if(!props.active || props.phase!=='overview')return
+  const rect=host.value.getBoundingClientRect()
+  waterTip.value=id
+  tipPosition.value={x:Math.max(8,Math.min(rect.width-166,event.clientX-rect.left+14)),y:Math.max(8,Math.min(rect.height-60,event.clientY-rect.top-60))}
+}
 const host = ref(null), canvas = ref(null), fallback = ref(false), ready = ref(false)
 const labels = {}
 let T, renderer, scene, camera, observer, frame = 0, disposed = false, previous = 0, meshes = [], raycaster, pointer, target, started = false
@@ -36,12 +47,12 @@ let water = null, elapsed = 0, lastDraw = 0, pickMeshes = [], landMeshes = [], s
 let width = 1, height = 1, homeX = 0, homeY = 0, viewHeight = 500, zoom = 1
 const midX = (bounds.minX + bounds.maxX) / 2, midY = (bounds.minY + bounds.maxY) / 2
 function choose(id) {
-  if (props.phase !== 'overview' || !props.active) return
+  if (props.phase !== 'overview' || !props.active || props.waterFocus) return
   const rect = host.value.getBoundingClientRect(), label = labels[id]?.getBoundingClientRect()
   emit('select', { id, x: label ? label.left + label.width/2 - rect.left : width/2, y: label ? label.top + label.height/2 - rect.top : height/2 })
 }
 function pick(event, click = false) {
-  if (!renderer || props.phase !== 'overview') return
+  if (!renderer || props.phase !== 'overview' || !props.active) return
   const rect = canvas.value.getBoundingClientRect()
   pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1)
   raycaster.setFromCamera(pointer, camera)
@@ -49,12 +60,15 @@ function pick(event, click = false) {
   const landHit=raycaster.intersectObjects(landMeshes)[0]
   const onWater=waterHit && (!landHit || waterHit.distance<landHit.distance)
   water?.hover(onWater ? waterHit : null)
+  if(onWater)showWaterTip(waterHit.object.userData.water,event)
+  else waterTip.value=null
   const id = raycaster.intersectObjects(pickMeshes)[0]?.object.userData.id || null
-  emit('hover', onWater ? null : id)
+  emit('hover', onWater || props.waterFocus ? null : id)
   schedule()
-  if (click && id) choose(id)
+  if(click && onWater) { waterTip.value=null;emit('water-select',waterHit.object.userData.water) }
+  else if (click && id) choose(id)
 }
-function clearHover() { water?.hover(null); emit('hover', null); schedule() }
+function clearHover() { waterTip.value=null;water?.hover(null); emit('hover', null); schedule() }
 function flatLabels() {
   const w = bounds.maxX - bounds.minX + 16, h = bounds.maxY - bounds.minY + 16
   const scale = Math.min(width/w, height/h) * .92
@@ -85,11 +99,14 @@ function draw(now) {
   const dt = previous ? Math.min((now-previous)/1000, .1) : 0; previous = now; lastDraw=now
   if(!props.reduced && waterVisible) elapsed+=dt
   water?.update(elapsed,dt,props.reduced)
-  const speed = props.reduced ? 1 : 1 - Math.exp(-dt * 7)
+  const focus=waterStories[props.waterFocus]
+  const speed = props.reduced ? 1 : 1 - Math.exp(-dt * (focus ? 2.8 : 7))
   const selected = regions.find(r => r.id === props.selected)
   const close = selected && ['focusing', 'entering', 'city', 'item', 'closing-item', 'leaving', 'switching'].includes(props.phase)
-  const tx = close ? selected.center[0] : homeX, ty = close ? selected.center[1] : homeY
-  const tz = close ? 2.25 : 1
+  const focusHeight=focus ? Math.max(focus.span[1],focus.span[0]/(width/height*(width<720?.88:.62))) : viewHeight
+  const tx = close ? selected.center[0] : focus ? focus.center[0]-(width<720?0:focusHeight*width/height*.13) : homeX
+  const ty = close ? selected.center[1] : focus ? focus.center[1] : homeY
+  const tz = close ? 2.25 : focus ? viewHeight/focusHeight : 1
   target.x += (tx-target.x)*speed; target.y += (ty-target.y)*speed; zoom += (tz-zoom)*speed
   let moving = Math.abs(tx-target.x)+Math.abs(ty-target.y)+Math.abs(tz-zoom) > .01
   camera.position.set(target.x, target.y - 225, 750); camera.lookAt(target); camera.zoom = zoom; camera.updateProjectionMatrix(); camera.updateMatrixWorld()
@@ -189,7 +206,9 @@ onMounted(async () => {
   } catch { if (!disposed) enableFallback() }
 })
 function contextLost(event) { event.preventDefault(); enableFallback() }
+watch(() => props.waterFocus,()=>{clearHover();if(fallback.value)flatLabels()})
 watch(() => [props.active, props.selected, props.hover, props.phase, props.counts, props.reduced], () => {
+  if(!props.active || props.phase!=='overview')waterTip.value=null
   if (!props.active) { cancelAnimationFrame(frame); frame = 0; previous=0 }
   else schedule()
 })
@@ -219,6 +238,9 @@ onBeforeUnmount(() => {
 .flat-map path.flat-water{stroke:none;cursor:default}
 .flat-map path.flat-islands{stroke-width:.15;cursor:default}
 .flat-map path.flat-hit{fill:transparent;stroke:none;pointer-events:all}
+.flat-map path.flat-water-hit{fill:transparent;stroke:none;pointer-events:fill;cursor:pointer}
+.water-tip{position:absolute;z-index:4;pointer-events:none;background:var(--brand-surface);border:1px solid var(--brand-line);border-left:2px solid var(--brand-red);padding:9px 12px;font:16px var(--brand-serif);color:var(--brand-deep-green)}
+.water-tip small{display:block;margin-top:4px;font:10px var(--brand-sans);color:var(--brand-muted)}
 .map-labels{position:absolute;inset:0;pointer-events:none;transition:opacity .3s}
 .map-labels[inert]{opacity:0}
 .map-city{position:absolute;left:0;top:0;pointer-events:auto;border:0;color:#384638;background:var(--brand-surface);border-radius:3px;padding:5px 8px;font-size:13px;letter-spacing:.12em;display:flex;align-items:center;gap:6px;white-space:nowrap;cursor:pointer;opacity:0;transition:background .18s,opacity .35s}

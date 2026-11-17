@@ -1,8 +1,20 @@
 <template>
-  <div ref="root" class="cultural-atlas" :class="{ 'atlas-active': active, 'in-city': phase !== 'overview' }" :style="[anchorStyle, city ? { '--city-accent': cityVisuals[city.id].ink } : {}]">
+  <div ref="root" class="cultural-atlas" :class="{ 'atlas-active': active, 'in-city': phase !== 'overview', 'water-closeup': !!waterFocus }" :style="[anchorStyle, city ? { '--city-accent': cityVisuals[city.id].ink } : {}]">
     <div class="atlas-orbit" aria-hidden="true"></div>
-    <AtlasMap ref="mapRef" :active="active" :selected="city?.id" :hover="hover || (discoveryFocused ? discoveryEntry.cityId : null)" :phase="phase" :recent="reading.recentCity" :counts="theme === 'all' ? null : counts" :reduced="reduced" @select="enterCity" @hover="hover = $event" />
+    <AtlasMap :water-focus="waterFocus" @water-select="openWater" ref="mapRef" :active="active" :selected="city?.id" :hover="hover || (discoveryFocused ? discoveryEntry.cityId : null)" :phase="phase" :recent="reading.recentCity" :counts="theme === 'all' ? null : counts" :reduced="reduced" @select="enterCity" @hover="hover = $event" />
     <div class="overview-ui" :inert="phase !== 'overview' || !active">
+      <nav class="water-entries" aria-label="水系近景">
+        <span>观水</span><button v-for="(story,id) in waterStories" :key="id" :ref="el=>waterButtons[id]=el" :aria-pressed="waterFocus===id" @click="openWater(id)">{{ story.name }}</button>
+        <button v-if="waterFocus" class="water-return" @click="closeWater">← 返回全省</button>
+      </nav>
+      <section v-if="waterFocus" class="water-story" aria-labelledby="water-story-title" aria-live="polite">
+        <span class="eyebrow">水岸手记 / {{ waterFocus==='taihu' ? 'TAIHU' : 'YANGTZE' }}</span>
+        <h2 id="water-story-title">{{ waterStories[waterFocus].title }}</h2>
+        <h3>{{ waterStories[waterFocus].subtitle }}</h3>
+        <p>{{ waterStories[waterFocus].geography }}</p><p>{{ waterStories[waterFocus].culture }}</p>
+        <a :href="waterStories[waterFocus].source" target="_blank" rel="noopener noreferrer">资料与延伸阅读 ↗</a>
+        <a class="water-story-credit" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">水系 © OpenStreetMap</a>
+      </section>
       <header class="atlas-heading"><span class="eyebrow">JIANGSU / CULTURAL ATLAS</span><h2>江苏<br><em>文化地图</em><span class="title-seal">文脉</span></h2><p>循山水脉络，读十三城风雅。</p><div class="heading-rule"></div><span class="map-instruction">选择一座城，走进它的故事</span></header>
       <div class="atlas-compass" aria-hidden="true"><span>北</span><i></i><small>N</small></div>
       <aside v-if="theme === 'all'" class="discovery-card" aria-label="文化发现" @pointerenter="discoveryFocused = true" @pointerleave="discoveryFocused = false">
@@ -38,6 +50,7 @@
 </template>
 <script setup>
 import BrandButton from './BrandButton.vue'
+import { waterStories } from '@/data/atlas/water-stories'
 import CityMuseumLinks from './CityMuseumLinks.vue'
 import { computed, ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -54,6 +67,9 @@ const props = defineProps({ active: Boolean })
 const emit = defineEmits(['navigation-lock'])
 const heroPhotoReady=ref(false)
 const mapRef=ref(null),root=ref(null),cityPanel=ref(null),detailPanel=ref(null),cityBack=ref(null),detailBack=ref(null)
+const waterFocus=ref(null),waterButtons={}
+function openWater(id){if(phase.value!=='overview'||!props.active||!waterStories[id])return;waterFocus.value=id;hover.value=null;discoveryFocused.value=false;indexOpen.value=false}
+function closeWater(){const id=waterFocus.value;waterFocus.value=null;nextTick(()=>waterButtons[id]?.focus({preventScroll:true}))}
 const theme=ref('all'),hover=ref(null),city=ref(null),item=ref(null),phase=ref('overview'),revealCity=ref(false),indexOpen=ref(false),reduced=ref(false)
 const counts=computed(()=>themeCounts(theme.value)),themeName=computed(()=>themes.find(t=>t.id===theme.value).name)
 const matchedCities=computed(()=>Object.values(counts.value).filter(n=>n>0).length)
@@ -71,7 +87,8 @@ let pendingDiscovery=null
 const anchorStyle=ref({ '--anchor-x':'60%', '--anchor-y':'50%' })
 let timers=new Set(),lastCityTrigger=null,lastItemTrigger=null,detailOrigin=null,animation=null,portalAnimation=null,portalFrames=null,mq,disposed=false
 function later(fn,ms){const id=setTimeout(()=>{timers.delete(id);if(!disposed)fn()},reduced.value?30:ms);timers.add(id)}
-watch(phase, value=>emit('navigation-lock',value!=='overview'))
+watch(phase, value=>{emit('navigation-lock',value!=='overview');if(value!=='overview')waterFocus.value=null})
+watch(()=>props.active,value=>{if(!value)waterFocus.value=null})
 async function enterCity({id,x,y}){
   const epoch=navigationEpoch
   if(phase.value!=='overview')return
@@ -203,7 +220,7 @@ watch(()=>props.active,active=>{
   animation?.cancel();portalAnimation?.cancel();item.value=null;city.value=null;phase.value='overview';revealCity.value=false;restoring=false
 })
 function trapFocus(event){const nodes=[...detailPanel.value.querySelectorAll('button,a[href]')];const first=nodes[0],last=nodes.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}}
-function keydown(event){if(props.active&&event.key==='Escape'){event.preventDefault();back()}}
+function keydown(event){if(props.active&&event.key==='Escape'){event.preventDefault();if(waterFocus.value)closeWater();else back()}}
 function motionChange(){reduced.value=mq.matches}
 onMounted(()=>{mq=matchMedia('(prefers-reduced-motion: reduce)');motionChange();mq.addEventListener('change',motionChange);window.addEventListener('keydown',keydown);applyRoute()})
 onBeforeUnmount(()=>{rememberCity();rememberItem();saveReading(storage,reading.value);clearTimeout(readingTimer);clearTimeout(noticeTimer);disposed=true;timers.forEach(clearTimeout);animation?.cancel();portalAnimation?.cancel();mq?.removeEventListener('change',motionChange);window.removeEventListener('keydown',keydown);emit('navigation-lock',false)})
@@ -409,4 +426,28 @@ onBeforeUnmount(()=>{rememberCity();rememberItem();saveReading(storage,reading.v
 .collection-filters button[aria-pressed=true]{background:var(--brand-jade);color:var(--brand-red);border-color:var(--brand-red)}
 @media(max-width:1100px) and (min-width:721px){.discovery-card{padding:12px}.roam-button{height:40px;padding:0 12px}}
 @media(max-width:720px){.cultural-atlas:before{width:100%;height:205px;bottom:auto;border-right:0;border-bottom:1px solid var(--brand-line)}.atlas-heading h2{font-size:34px;letter-spacing:.03em}.roam-entry{top:210px}.roam-button{height:36px;padding:0 10px;gap:8px}.roam-button :deep(.brand-button__label){font-size:19px;letter-spacing:1px}.discovery-card{padding:10px 12px;box-shadow:none}.discovery-heading{padding-bottom:4px}.collection-title{padding:16px}.collection-title h3{font-size:23px}.featured-copy{padding:20px}.city-intro{font-size:17px}}
+</style>
+
+<style scoped>
+.water-entries{position:absolute;top:96px;right:7%;display:flex;align-items:center;gap:16px;z-index:5;color:var(--brand-muted);font:12px var(--brand-serif)}
+.water-entries button{border:0;border-bottom:1px solid transparent;background:transparent;color:var(--brand-deep-green);padding:8px 2px;cursor:pointer;font:16px var(--brand-serif)}
+.water-entries button:hover,.water-entries button[aria-pressed=true]{color:var(--brand-red);border-bottom-color:var(--brand-red)}
+.water-entries button:focus-visible{outline:1px solid var(--brand-red);outline-offset:4px}
+.water-entries .water-return{font:12px var(--brand-sans);margin-left:10px}
+.water-story{position:absolute;left:6%;top:25%;width:27%;max-width:340px;color:var(--brand-ink);border-top:1px solid var(--brand-line);padding-top:22px}
+.water-story h2{font:36px var(--brand-serif);margin:18px 0 12px;color:var(--brand-deep-green)}
+.water-story h3{font:16px var(--brand-serif);margin:0 0 22px;color:var(--brand-red)}
+.water-story p{font:14px/1.9 var(--brand-sans);color:var(--brand-muted);margin:12px 0}
+.water-story a{display:inline-block;color:var(--brand-red);font-size:11px;text-underline-offset:4px;margin-top:12px}
+.water-story .water-story-credit{display:block;color:var(--brand-muted)}
+.water-closeup .atlas-heading,.water-closeup .discovery-card,.water-closeup .roam-entry,.water-closeup .theme-stories,.water-closeup .atlas-compass,.water-closeup .atlas-bottom{display:none}
+@media(max-width:720px){
+ .water-entries{top:211px;left:6%;right:auto;gap:13px}.water-entries>span{display:none}.water-entries button{font-size:14px}
+ .water-closeup .water-entries{top:84px;left:6%;right:6%}.water-entries .water-return{margin-left:auto}
+ .water-closeup:before{display:none}
+ .water-closeup :deep(.atlas-map){inset:125px 0 310px}
+ .water-story{left:6%;right:6%;top:auto;bottom:22px;width:auto;max-width:none;padding-top:12px;background:var(--brand-paper)}
+ .water-story h2{font-size:25px;margin:10px 0 7px}.water-story h3{font-size:14px;margin-bottom:10px}.water-story p{font-size:12px;line-height:1.65;margin:8px 0}
+ .water-story .eyebrow{font-size:9px}.water-story a{margin-top:5px}.water-story .water-story-credit{display:inline-block;margin-left:16px;font-size:9px}
+}
 </style>
