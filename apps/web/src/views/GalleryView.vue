@@ -1,34 +1,10 @@
 <template>
-  <div class="gallery-container">
-    <section class="page-header">
-      <div class="header-bg-pattern"></div>
-      <div class="header-wave">
-        <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
-          <path d="M0,60 C360,120 720,0 1080,60 C1260,90 1380,30 1440,60 L1440,120 L0,120 Z" fill="#FFF8F0"/>
-        </svg>
-      </div>
-      <div class="header-content">
-        <h1 class="page-title">
-          <span class="title-char" v-for="(char, index) in titleChars" :key="index" :style="{ animationDelay: `${index * 0.1}s` }">{{ char }}</span>
-        </h1>
-        <p class="page-subtitle">探索江苏风土人情，分享AI创作的江苏之美</p>
-        
-        <div class="header-stats">
-          <div class="stat-item" v-for="(stat, index) in statsData" :key="index">
-            <div class="stat-icon">
-              <component :is="stat.icon" />
-            </div>
-            <div class="stat-info">
-              <span class="stat-number">{{ animatedStats[index] }}</span>
-              <span class="stat-label">{{ stat.label }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+  <div class="gallery-container culture-chapter">
+    <CultureChapterHeader kind="works" />
+
 
     <div class="main-content">
-      <div class="community-sidebar">
+      <div class="community-sidebar" v-if="activeUsers.length || popularTags.length">
         <div class="sidebar-section active-users">
           <h3 class="sidebar-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -154,33 +130,18 @@
         </div>
 
         <div class="upload-section" v-if="isLoggedIn">
-          <button class="upload-btn" @click="showUploadDialog = true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M17 8L12 3L7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M12 3V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            上传作品
-          </button>
+          <BrandButton class="chapter-upload" @click="showUploadDialog = true">上传作品</BrandButton>
         </div>
 
         <transition name="fade" mode="out-in">
           <div :key="filterKey" class="gallery-content" ref="galleryContent">
-            <div v-if="filteredWorks.length === 0" class="empty-state">
-              <svg width="80" height="80" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>
-                <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
-                <path d="M21 15L16 10L5 21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <h3>暂无作品</h3>
-              <p>还没有找到符合条件的作品，快来上传您的第一幅AI创作吧！</p>
-            </div>
+            <CulturePageState :loading="pageLoading" :error="loadError" :empty="!filteredWorks.length" @retry="loadWorks" @reset="clearGalleryFilters" />
 
-            <div v-else :class="['works-grid', viewMode]">
+            <div v-if="filteredWorks.length" :class="['works-grid', viewMode]">
               <div 
                 v-for="(work, index) in displayedWorks" 
                 :key="work.id"
-                class="work-card"
+                class="work-card" role="button" tabindex="0" @keydown.enter.self="openWorkDetail(work)" @keydown.space.self.prevent="openWorkDetail(work)"
                 :style="{ animationDelay: `${index * 0.05}s` }"
                 @click="openWorkDetail(work)"
               >
@@ -266,7 +227,7 @@
     <el-dialog
       v-model="showUploadDialog"
       title="上传作品"
-      width="700px"
+      width="min(700px, calc(100vw - 32px))"
       class="upload-dialog"
       destroy-on-close
       @closed="resetUploadDialog"
@@ -614,8 +575,12 @@
 </template>
 
 <script setup>
+import BrandButton from "@/components/BrandButton.vue"
+import CultureChapterHeader from "@/components/CultureChapterHeader.vue"
+import CulturePageState from "@/components/CulturePageState.vue"
 import { ref, computed, onMounted, onUnmounted, h, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { del, get, post, upload } from '@/utils/api/request'
 
 const titleChars = '江苏图库'.split('')
 const defaultAvatar = 'https://api.dicebear.com/9.x/avataaars/svg?seed=user'
@@ -651,16 +616,16 @@ const currentUserAvatar = computed(() => localStorage.getItem('avatar') || defau
 const animatedStats = ref([0, 0, 0])
 
 const statsData = [
-  { value: 25, label: '江苏图库', icon: h('svg', { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none' }, [
+  { value: 0, label: '公开作品', icon: h('svg', { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none' }, [
     h('rect', { x: 3, y: 3, width: 18, height: 18, rx: 2, stroke: 'currentColor', 'stroke-width': 2 }),
     h('circle', { cx: 8.5, cy: 8.5, r: 1.5, fill: 'currentColor' }),
     h('path', { d: 'M21 15L16 10L5 21', stroke: 'currentColor', 'stroke-width': 2 })
   ])},
-  { value: 13, label: '覆盖城市', icon: h('svg', { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none' }, [
+  { value: 0, label: '创作者', icon: h('svg', { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none' }, [
     h('path', { d: 'M21 10C21 17 12 23 12 23C12 23 3 17 3 10C3 7.61305 3.94821 5.32387 5.63604 3.63604C7.32387 1.94821 9.61305 1 12 1C14.3869 1 16.6761 1.94821 18.364 3.63604C20.0518 5.32387 21 7.61305 21 10Z', stroke: 'currentColor', 'stroke-width': 2 }),
     h('circle', { cx: 12, cy: 10, r: 3, stroke: 'currentColor', 'stroke-width': 2 })
   ])},
-  { value: 7, label: '主题分类', icon: h('svg', { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none' }, [
+  { value: 0, label: '主题分类', icon: h('svg', { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none' }, [
     h('rect', { x: 3, y: 3, width: 7, height: 7, stroke: 'currentColor', 'stroke-width': 2 }),
     h('rect', { x: 14, y: 3, width: 7, height: 7, stroke: 'currentColor', 'stroke-width': 2 }),
     h('rect', { x: 3, y: 14, width: 7, height: 7, stroke: 'currentColor', 'stroke-width': 2 }),
@@ -679,28 +644,24 @@ const categories = [
   { value: 'food', label: '美食文化' }
 ]
 
-const popularTags = ref([
-  { name: '江苏风光', count: 128 },
-  { name: '江南水乡', count: 96 },
-  { name: '古典园林', count: 78 },
-  { name: '非遗文化', count: 65 },
-  { name: '南京', count: 156 },
-  { name: '苏州', count: 142 },
-  { name: '扬州', count: 89 },
-  { name: '太湖', count: 45 },
-  { name: '古镇', count: 67 },
-  { name: '历史遗迹', count: 54 }
-])
+const popularTags = computed(() => {
+  const counts = new Map()
+  for (const work of works.value) for (const tag of work.tags || []) counts.set(tag, (counts.get(tag) || 0) + 1)
+  return [...counts].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([name, count]) => ({ name, count }))
+})
 
 const suggestedTags = ['江苏风光', '江南水乡', '古典园林', '非遗文化', '南京', '苏州', '扬州', '无锡', '太湖', '大运河', '江苏美食']
 
-const activeUsers = ref([
-  { id: 1, name: '江苏文化爱好者', avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=1', worksCount: 28, isOnline: true, isFollowing: false },
-  { id: 2, name: '金陵摄影师', avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=2', worksCount: 45, isOnline: true, isFollowing: true },
-  { id: 3, name: '无锡风光记录者', avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=3', worksCount: 32, isOnline: false, isFollowing: false },
-  { id: 4, name: '扬州文化推广者', avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=4', worksCount: 19, isOnline: true, isFollowing: false },
-  { id: 5, name: '古镇旅行家', avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=5', worksCount: 56, isOnline: false, isFollowing: true }
-])
+const activeUsers = computed(() => {
+  const users = new Map()
+  for (const work of works.value) {
+    const name = work.author
+    const entry = users.get(name) || { id: name, name, avatar: work.authorAvatar, worksCount: 0, isOnline: false, isFollowing: false }
+    entry.worksCount++
+    users.set(name, entry)
+  }
+  return [...users.values()].sort((a, b) => b.worksCount - a.worksCount).slice(0, 5)
+})
 
 const uploadForm = ref({
   title: '',
@@ -711,536 +672,42 @@ const uploadForm = ref({
   allowDownload: false
 })
 
-const works = ref([
-  {
-    id: 1,
-    title: '苏州拙政园春景',
-    description: '苏州拙政园是中国四大名园之一，园内亭台楼阁错落有致，池塘荷花盛开，展现了江南园林的精致与典雅。这幅作品通过AI技术再现了春日拙政园的诗意美景。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Suzhou%20Humble%20Administrator%20Garden%20spring%20Chinese%20classical%20garden%20pond%20pavilion&image_size=landscape_16_9',
-    author: '江苏文化爱好者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=1',
-    category: 'heritage',
-    tags: ['古典园林', '苏州', '世界遗产', '江南水乡'],
-    likes: 256,
-    views: 3520,
-    collects: 89,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2024-01-15',
-    imageHeight: 200,
-    comments: [
-      { id: 1, userName: '旅行达人', userAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=10', content: '太美了！下次一定要去苏州看看', likes: 12, createTime: '2024-01-16' },
-      { id: 2, userName: '摄影爱好者', userAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=11', content: '构图很棒，色彩也很舒服', likes: 8, createTime: '2024-01-16' }
-    ]
-  },
-  {
-    id: 2,
-    title: '南京中山陵秋色',
-    description: '中山陵是中华民国国父孙中山先生的陵寝，位于南京紫金山南麓。秋季的中山陵，层林尽染，金黄的梧桐叶铺满台阶，庄严肃穆中透着诗意。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Nanjing%20Sun%20Yat-sen%20Mausoleum%20autumn%20purple%20mountain%20golden%20leaves&image_size=landscape_16_9',
-    author: '金陵摄影师',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=2',
-    category: 'heritage',
-    tags: ['南京', '中山陵', '历史遗迹', '紫金山'],
-    likes: 312,
-    views: 4230,
-    collects: 112,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: true,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2024-01-14',
-    imageHeight: 220,
-    comments: []
-  },
-  {
-    id: 3,
-    title: '太湖晨曦',
-    description: '太湖是中国第三大淡水湖，横跨江苏无锡、苏州等地。清晨的太湖，薄雾笼罩，渔船点点，展现了江南水乡的宁静与柔美。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Taihu%20Lake%20sunrise%20morning%20mist%20fishing%20boats%20Jiangnan&image_size=landscape_16_9',
-    author: '无锡风光记录者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=3',
-    category: 'landscape',
-    tags: ['太湖', '无锡', '江苏风光', '自然风光'],
-    likes: 198,
-    views: 2890,
-    collects: 67,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2024-01-13',
-    imageHeight: 180,
-    comments: []
-  },
-  {
-    id: 4,
-    title: '扬州瘦西湖二十四桥',
-    description: '瘦西湖是扬州的城市名片，二十四桥明月夜的诗意在这里得到完美诠释。桥影倒映水中，杨柳依依，尽显江南水乡的婉约之美。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Yangzhou%20Slender%20West%20Lake%20twenty-four%20bridges%20moonlight%20willow&image_size=landscape_16_9',
-    author: '扬州文化推广者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=4',
-    category: 'heritage',
-    tags: ['扬州', '瘦西湖', '古典园林', '江南水乡'],
-    likes: 278,
-    views: 3450,
-    collects: 95,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2024-01-12',
-    imageHeight: 240,
-    comments: []
-  },
-  {
-    id: 5,
-    title: '周庄古镇夜景',
-    description: '周庄是中国第一水乡，古镇内河道纵横，古桥众多。夜幕降临，华灯初上，古镇倒映在水中，如梦如幻，仿佛穿越回千年前的江南。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Zhouzhuang%20water%20town%20night%20lanterns%20ancient%20bridges%20reflection&image_size=landscape_16_9',
-    author: '古镇旅行家',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=5',
-    category: 'heritage',
-    tags: ['周庄', '古镇', '江南水乡', '夜景'],
-    likes: 345,
-    views: 4120,
-    collects: 128,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: true,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2024-01-11',
-    imageHeight: 260,
-    comments: []
-  },
-  {
-    id: 6,
-    title: '南京夫子庙秦淮河',
-    description: '夫子庙秦淮河风光带是南京历史文化荟萃之地，"烟笼寒水月笼沙"的诗句在这里得到生动诠释。夜晚的秦淮河灯火璀璨，游船穿梭，再现了六朝古都的繁华。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Nanjing%20Confucius%20Temple%20Qinhuai%20River%20night%20lanterns%20boats&image_size=landscape_16_9',
-    author: '金陵文化守护者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=6',
-    category: 'culture',
-    tags: ['南京', '夫子庙', '秦淮河', '历史文化'],
-    likes: 423,
-    views: 5670,
-    collects: 156,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2024-01-10',
-    imageHeight: 230,
-    comments: []
-  },
-  {
-    id: 7,
-    title: '苏州评弹表演',
-    description: '苏州评弹是国家级非物质文化遗产，以吴语演唱，曲调优美动听。这幅作品捕捉了评弹艺人身着传统服饰，手持琵琶、三弦表演的精彩瞬间。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Suzhou%20Pingtan%20performance%20traditional%20Chinese%20music%20pipa%20sanxian&image_size=landscape_16_9',
-    author: '非遗文化传承人',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=7',
-    category: 'folk',
-    tags: ['苏州评弹', '非遗文化', '传统艺术', '苏州'],
-    likes: 189,
-    views: 2340,
-    collects: 78,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: false,
-    createTime: '2024-01-09',
-    imageHeight: 200,
-    comments: []
-  },
-  {
-    id: 8,
-    title: '连云港花果山水帘洞',
-    description: '花果山是《西游记》中孙悟空的老家，水帘洞是山中著名景点。瀑布飞流直下，洞内幽深神秘，充满了神话传说的色彩。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Lianyungang%20Huaguo%20Mountain%20Water%20Curtain%20Cave%20waterfall%20Journey%20to%20the%20West&image_size=landscape_16_9',
-    author: '西游文化爱好者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=8',
-    category: 'heritage',
-    tags: ['连云港', '花果山', '西游记', '名胜古迹'],
-    likes: 267,
-    views: 3210,
-    collects: 89,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2024-01-08',
-    imageHeight: 210,
-    comments: []
-  },
-  {
-    id: 9,
-    title: '南京长江大桥',
-    description: '南京长江大桥是中国自行设计建造的第一座双层式铁路、公路两用桥梁，是南京的标志性建筑。大桥横跨长江，气势恢宏，见证了新中国的建设成就。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Nanjing%20Yangtze%20River%20Bridge%20double%20deck%20bridge%20sunset%20grand&image_size=landscape_16_9',
-    author: '南京城市建设者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=9',
-    category: 'modern',
-    tags: ['南京', '长江大桥', '现代发展', '地标建筑'],
-    likes: 234,
-    views: 2980,
-    collects: 67,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2024-01-07',
-    imageHeight: 190,
-    comments: []
-  },
-  {
-    id: 10,
-    title: '宜兴紫砂壶制作',
-    description: '宜兴紫砂壶是国家级非物质文化遗产，以其独特的材质和精湛的工艺闻名于世。这幅作品展示了紫砂艺人精心制作紫砂壶的专注神态。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Yixing%20Zisha%20teapot%20making%20craftsman%20clay%20traditional%20craft&image_size=landscape_16_9',
-    author: '传统工艺保护者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=10',
-    category: 'folk',
-    tags: ['宜兴', '紫砂壶', '非遗文化', '传统工艺'],
-    likes: 312,
-    views: 3780,
-    collects: 134,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2024-01-06',
-    imageHeight: 220,
-    comments: []
-  },
-  {
-    id: 11,
-    title: '苏州博物馆现代建筑',
-    description: '苏州博物馆新馆由建筑大师贝聿铭设计，将传统苏州园林元素与现代建筑理念完美融合。粉墙黛瓦、几何造型，展现了苏州文化的传承与创新。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Suzhou%20Museum%20I.M.Pei%20modern%20architecture%20Chinese%20garden%20style&image_size=landscape_16_9',
-    author: '建筑设计爱好者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=11',
-    category: 'modern',
-    tags: ['苏州', '苏州博物馆', '现代建筑', '贝聿铭'],
-    likes: 289,
-    views: 3450,
-    collects: 98,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2024-01-05',
-    imageHeight: 200,
-    comments: []
-  },
-  {
-    id: 12,
-    title: '淮安周恩来纪念馆',
-    description: '周恩来纪念馆位于淮安，是为纪念敬爱的周恩来总理而建。馆内陈列了大量珍贵的历史照片和文物，展现了周总理波澜壮阔的一生。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Huai%27an%20Zhou%20Enlai%20Memorial%20Hall%20modern%20architecture%20solemn&image_size=landscape_16_9',
-    author: '红色文化传承者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=12',
-    category: 'culture',
-    tags: ['淮安', '周恩来', '红色文化', '历史名人'],
-    likes: 356,
-    views: 4230,
-    collects: 145,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2024-01-04',
-    imageHeight: 210,
-    comments: []
-  },
-  {
-    id: 13,
-    title: '常州中华恐龙园',
-    description: '中华恐龙园是常州的标志性主题公园，集科普、游乐、演艺于一体。园区内的恐龙雕塑栩栩如生，是亲子游的热门目的地。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Changzhou%20Dinosaur%20Park%20T-Rex%20statue%20theme%20park%20family&image_size=landscape_16_9',
-    author: '亲子旅行达人',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=13',
-    category: 'modern',
-    tags: ['常州', '恐龙园', '主题公园', '亲子游'],
-    likes: 178,
-    views: 2340,
-    collects: 56,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2024-01-03',
-    imageHeight: 180,
-    comments: []
-  },
-  {
-    id: 14,
-    title: '扬州漆器工艺',
-    description: '扬州漆器是国家级非物质文化遗产，以其精湛的镶嵌工艺和华丽的装饰效果著称。这幅作品展示了漆器艺人精心雕琢的细节之美。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Yangzhou%20lacquerware%20craftsman%20intricate%20design%20traditional%20art&image_size=landscape_16_9',
-    author: '传统艺术收藏家',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=14',
-    category: 'folk',
-    tags: ['扬州', '漆器', '非遗文化', '传统工艺'],
-    likes: 234,
-    views: 2890,
-    collects: 87,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: false,
-    createTime: '2024-01-02',
-    imageHeight: 200,
-    comments: []
-  },
-  {
-    id: 15,
-    title: '盐城丹顶鹤湿地',
-    description: '盐城丹顶鹤湿地是世界上最大的丹顶鹤越冬地，每年冬季有上千只丹顶鹤在此栖息。夕阳西下，鹤舞翩跹，构成了一幅动人的自然画卷。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Yancheng%20red%20crowned%20crane%20wetland%20sunset%20birds%20flying&image_size=landscape_16_9',
-    author: '生态摄影师',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=15',
-    category: 'landscape',
-    tags: ['盐城', '丹顶鹤', '湿地', '生态保护'],
-    likes: 345,
-    views: 4120,
-    collects: 123,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2024-01-01',
-    imageHeight: 240,
-    comments: []
-  },
-  {
-    id: 16,
-    title: '南京明孝陵石象路',
-    description: '明孝陵是明太祖朱元璋的陵寝，石象路是神道的重要组成部分。秋季的石象路，金黄的银杏叶铺满道路，石兽肃立两旁，庄严而美丽。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Nanjing%20Ming%20Xiaoling%20Tomb%20stone%20elephant%20road%20autumn%20ginkgo&image_size=landscape_16_9',
-    author: '金陵风光记录者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=16',
-    category: 'heritage',
-    tags: ['南京', '明孝陵', '世界遗产', '历史遗迹'],
-    likes: 378,
-    views: 4890,
-    collects: 156,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2023-12-31',
-    imageHeight: 220,
-    comments: []
-  },
-  {
-    id: 17,
-    title: '南通濠河夜景',
-    description: '濠河是国内仅存的四条古护城河之一，环绕南通老城区。夜晚的濠河灯火璀璨，古建筑倒映水中，展现了"城在水中坐，人在画中游"的诗意。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Nantong%20Haohe%20River%20night%20ancient%20city%20wall%20lanterns%20reflection&image_size=landscape_16_9',
-    author: '江海文化推广者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=17',
-    category: 'culture',
-    tags: ['南通', '濠河', '古城', '夜景'],
-    likes: 212,
-    views: 2780,
-    collects: 78,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2023-12-30',
-    imageHeight: 200,
-    comments: []
-  },
-  {
-    id: 18,
-    title: '徐州汉画像石',
-    description: '徐州汉画像石是中国古代艺术的瑰宝，以精美的雕刻展现了汉代的社会生活。这幅作品再现了汉画像石中车马出行的壮观场面。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Xuzhou%20Han%20dynasty%20stone%20relief%20carving%20ancient%20art%20chariot&image_size=landscape_16_9',
-    author: '汉文化研究者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=18',
-    category: 'culture',
-    tags: ['徐州', '汉画像石', '汉代文化', '历史文物'],
-    likes: 189,
-    views: 2450,
-    collects: 67,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: false,
-    createTime: '2023-12-29',
-    imageHeight: 190,
-    comments: []
-  },
-  {
-    id: 19,
-    title: '苏州昆曲表演',
-    description: '昆曲是中国最古老的剧种之一，被誉为"百戏之祖"。这幅作品捕捉了昆曲演员身着精美戏服，演绎经典剧目《牡丹亭》的动人瞬间。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Suzhou%20Kunqu%20Opera%20performance%20Peony%20Pavilion%20traditional%20costume&image_size=landscape_16_9',
-    author: '戏曲文化爱好者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=19',
-    category: 'art',
-    tags: ['苏州', '昆曲', '非遗文化', '传统艺术'],
-    likes: 289,
-    views: 3560,
-    collects: 112,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2023-12-28',
-    imageHeight: 230,
-    comments: []
-  },
-  {
-    id: 20,
-    title: '镇江金山寺',
-    description: '金山寺是镇江最著名的佛教寺庙，因《白蛇传》中"水漫金山"的故事而闻名。寺庙依山而建，殿宇层叠，金碧辉煌。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Zhenjiang%20Jinshan%20Temple%20Buddhist%20temple%20mountain%20Yangtze%20River&image_size=landscape_16_9',
-    author: '佛教文化研究者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=20',
-    category: 'heritage',
-    tags: ['镇江', '金山寺', '佛教文化', '历史遗迹'],
-    likes: 234,
-    views: 3120,
-    collects: 89,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2023-12-27',
-    imageHeight: 210,
-    comments: []
-  },
-  {
-    id: 21,
-    title: '南京盐水鸭',
-    description: '南京盐水鸭是南京最著名的特产，已有两千五百多年历史。皮白肉嫩，肥而不腻，咸鲜适中，清香可口，是南京人餐桌上的必备美食。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Nanjing%20salted%20duck%20Chinese%20cuisine%20delicious%20food%20plate&image_size=landscape_16_9',
-    author: '金陵美食家',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=21',
-    category: 'food',
-    tags: ['南京', '盐水鸭', '美食', '江苏美食'],
-    likes: 289,
-    views: 3560,
-    collects: 112,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2023-12-26',
-    imageHeight: 200,
-    comments: []
-  },
-  {
-    id: 22,
-    title: '苏州松鼠桂鱼',
-    description: '松鼠桂鱼是苏州传统名菜，因形似松鼠而得名。选用太湖桂鱼，经精细刀工处理后油炸，浇上糖醋汁，外酥里嫩，酸甜可口。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Suzhou%20squirrel%20mandarin%20fish%20Chinese%20cuisine%20sweet%20sour&image_size=landscape_16_9',
-    author: '苏帮菜传承人',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=22',
-    category: 'food',
-    tags: ['苏州', '松鼠桂鱼', '美食', '江苏美食'],
-    likes: 312,
-    views: 3890,
-    collects: 134,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2023-12-25',
-    imageHeight: 190,
-    comments: []
-  },
-  {
-    id: 23,
-    title: '扬州蟹黄汤包',
-    description: '扬州蟹黄汤包是扬州早茶的招牌点心，以皮薄汤多著称。选用阳澄湖大闸蟹的蟹黄蟹肉为馅，汤汁鲜美，是秋季扬州必尝美食。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Yangzhou%20crab%20roe%20soup%20dumpling%20steaming%20bamboo%20basket&image_size=landscape_16_9',
-    author: '扬州早茶文化推广者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=23',
-    category: 'food',
-    tags: ['扬州', '蟹黄汤包', '美食', '江苏美食'],
-    likes: 345,
-    views: 4230,
-    collects: 156,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2023-12-24',
-    imageHeight: 200,
-    comments: []
-  },
-  {
-    id: 24,
-    title: '无锡酱排骨',
-    description: '无锡酱排骨是无锡最著名的传统名菜，以三凤桥肉庄最为有名。选用猪肋排，经特殊工艺烹制，色泽酱红，肉质酥烂，甜中带咸。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Wuxi%20sweet%20sour%20spare%20ribs%20Chinese%20cuisine%20delicious&image_size=landscape_16_9',
-    author: '无锡美食记录者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=24',
-    category: 'food',
-    tags: ['无锡', '酱排骨', '美食', '江苏美食'],
-    likes: 278,
-    views: 3450,
-    collects: 98,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2023-12-23',
-    imageHeight: 180,
-    comments: []
-  },
-  {
-    id: 25,
-    title: '镇江肴肉',
-    description: '镇江肴肉又名水晶肉蹄，是镇江的传统名菜。选用猪蹄膀，经腌制、炖煮、冷却而成，肉质晶莹剔透，肥而不腻，配以镇江香醋食用更佳。',
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Zhenjiang%20crystal%20pork%20jelly%20meat%20Chinese%20cuisine&image_size=landscape_16_9',
-    author: '镇江美食文化爱好者',
-    authorAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=25',
-    category: 'food',
-    tags: ['镇江', '肴肉', '美食', '江苏美食'],
-    likes: 234,
-    views: 2890,
-    collects: 78,
-    isLiked: false,
-    isCollected: false,
-    isFollowing: false,
-    isPublic: true,
-    allowDownload: true,
-    createTime: '2023-12-22',
-    imageHeight: 190,
-    comments: []
+const works = ref([])
+const pageLoading = ref(true)
+const loadError = ref('')
+
+async function loadWorks() {
+  pageLoading.value = true
+  loadError.value = ''
+  const all = []
+  for (let pageNum = 1; ; pageNum++) {
+    const result = await get('/works/list', { pageNum, pageSize: 100 })
+    if (result.code !== 200) { loadError.value = result.message || '图库加载失败'; pageLoading.value = false; return }
+    all.push(...(result.data.records || []))
+    if (pageNum >= result.data.pages) break
   }
-])
+  pageLoading.value = false
+  works.value = all.map((work) => ({
+    ...work,
+    author: work.userNickname || '用户',
+    authorAvatar: work.userAvatar || defaultAvatar,
+    likes: work.likeCount || 0,
+    views: work.viewCount || 0,
+    collects: work.collectCount || 0,
+    tags: Array.isArray(work.tags) ? work.tags : [],
+    comments: [],
+    isLiked: false,
+    isCollected: false,
+    isFollowing: false,
+    imageHeight: 200,
+  }))
+  statsData[0].value = works.value.length
+  statsData[1].value = new Set(works.value.map((work) => work.author)).size
+  statsData[2].value = new Set(works.value.map((work) => work.category).filter(Boolean)).size
+  animateStats()
+}
+
+function clearGalleryFilters() { searchQuery.value = ''; selectedCategory.value = ''; selectedTags.value = []; displayCount.value = pageSize }
 
 const filterKey = computed(() => `${selectedCategory.value}-${selectedTags.value.join(',')}-${searchQuery.value}`)
 
@@ -1316,24 +783,28 @@ function openWorkDetail(work) {
   showDetailDialog.value = true
 }
 
-function likeWork(work) {
+async function likeWork(work) {
   if (!isLoggedIn.value) {
     ElMessage.warning('请先登录')
     return
   }
-  work.isLiked = !work.isLiked
-  work.likes += work.isLiked ? 1 : -1
-  ElMessage.success(work.isLiked ? '已喜欢' : '已取消喜欢')
+  const result = await post(`/works/like/${work.id}`)
+  if (result.code !== 200) { ElMessage.error(result.message || '点赞失败'); return }
+  work.isLiked = result.data.liked
+  work.likes = Math.max(0, work.likes + (work.isLiked ? 1 : -1))
+  ElMessage.success(result.message)
 }
 
-function collectWork(work) {
+async function collectWork(work) {
   if (!isLoggedIn.value) {
     ElMessage.warning('请先登录')
     return
   }
-  work.isCollected = !work.isCollected
-  work.collects += work.isCollected ? 1 : -1
-  ElMessage.success(work.isCollected ? '已收藏' : '已取消收藏')
+  const result = await post('/collections/toggle', { targetType: 'work', targetId: work.id })
+  if (result.code !== 200) { ElMessage.error(result.message || '收藏失败'); return }
+  work.isCollected = result.data
+  work.collects = Math.max(0, work.collects + (work.isCollected ? 1 : -1))
+  ElMessage.success(result.message)
 }
 
 function downloadWork(work) {
@@ -1357,11 +828,10 @@ function deleteWork(work) {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    const index = works.value.findIndex(w => w.id === work.id)
-    if (index > -1) {
-      works.value.splice(index, 1)
-    }
+  }).then(async () => {
+    const result = await del(`/works/${work.id}`)
+    if (result.code !== 200) { ElMessage.error(result.message || '删除失败'); return }
+    await loadWorks()
     showDetailDialog.value = false
     ElMessage.success('删除成功')
   }).catch(() => {})
@@ -1376,8 +846,7 @@ function toggleFollow(user) {
     ElMessage.warning('请先登录')
     return
   }
-  user.isFollowing = !user.isFollowing
-  ElMessage.success(user.isFollowing ? '关注成功' : '已取消关注')
+  ElMessage.info('关注功能尚未开放')
 }
 
 function toggleFollowWork(work) {
@@ -1385,41 +854,35 @@ function toggleFollowWork(work) {
     ElMessage.warning('请先登录')
     return
   }
-  work.isFollowing = !work.isFollowing
-  ElMessage.success(work.isFollowing ? '关注成功' : '已取消关注')
+  ElMessage.info('关注功能尚未开放')
 }
 
-function openCommentPanel(work) {
+async function openCommentPanel(work) {
   if (!isLoggedIn.value) {
     ElMessage.warning('请先登录')
     return
   }
   commentWork.value = work
   showCommentDrawer.value = true
+  const result = await get('/comments/list', { targetType: 'work', targetId: work.id, pageSize: 100 })
+  if (result.code === 200) work.comments = (result.data.records || []).map((item) => ({ ...item, userName: item.userNickname, likes: item.likeCount || 0 }))
+  else ElMessage.error(result.message || '评论加载失败')
 }
 
-function submitComment() {
+async function submitComment() {
   if (!newComment.value.trim()) return
-  
-  const comment = {
-    id: Date.now(),
-    userName: currentUsername.value,
-    userAvatar: currentUserAvatar.value,
-    content: newComment.value.trim(),
-    likes: 0,
-    createTime: new Date().toISOString()
-  }
-  
-  if (!commentWork.value.comments) {
-    commentWork.value.comments = []
-  }
-  commentWork.value.comments.unshift(comment)
+  const result = await post('/comments', { targetType: 'work', targetId: commentWork.value.id, content: newComment.value.trim() })
+  if (result.code !== 200) { ElMessage.error(result.message || '评论失败'); return }
   newComment.value = ''
+  const list = await get('/comments/list', { targetType: 'work', targetId: commentWork.value.id, pageSize: 100 })
+  if (list.code === 200) commentWork.value.comments = (list.data.records || []).map((item) => ({ ...item, userName: item.userNickname, likes: item.likeCount || 0 }))
   ElMessage.success('评论成功')
 }
 
-function likeComment(comment) {
-  comment.likes++
+async function likeComment(comment) {
+  const result = await post(`/comments/like/${comment.id}`)
+  if (result.code !== 200) { ElMessage.error(result.message || '点赞失败'); return }
+  comment.likes = Math.max(0, comment.likes + (result.data.liked ? 1 : -1))
 }
 
 function replyComment(comment) {
@@ -1549,56 +1012,44 @@ function resetUploadDialog() {
 
 async function submitWorks() {
   if (!canSubmit.value || isUploading.value) return
-  
   isUploading.value = true
-  
-  for (const file of uploadFiles.value) {
-    file.status = 'uploading'
-    file.progress = 0
-    
-    for (let i = 0; i <= 100; i += 10) {
-      await new Promise(resolve => setTimeout(resolve, 100))
-      file.progress = i
+  let succeeded = 0
+  try {
+    for (const file of uploadFiles.value) {
+      let path = ''
+      try {
+        file.status = 'uploading'
+        const image = await upload('/works/upload', file.file)
+        if (image.code !== 200) throw new Error(image.message || '图片上传失败')
+        path = image.data.path
+        const saved = await post('/works', {
+          title: uploadForm.value.title,
+          description: uploadForm.value.description,
+          imagePath: path,
+          category: uploadForm.value.category,
+          tags: uploadForm.value.tags,
+          isPublic: uploadForm.value.isPublic,
+          allowDownload: uploadForm.value.allowDownload,
+        })
+        if (saved.code !== 200) throw new Error(saved.message || '作品保存失败')
+        path = ''
+        file.status = 'success'
+        succeeded++
+      } catch (error) {
+        file.status = 'error'
+        if (path) await del(`/works/upload?path=${encodeURIComponent(path)}`)
+        ElMessage.error(`${file.name}：${error.message}`)
+      }
     }
-    
-    file.status = 'success'
-  }
-  
-  for (const file of uploadFiles.value) {
-    const newWork = {
-      id: Date.now() + Math.random(),
-      title: uploadForm.value.title,
-      description: uploadForm.value.description,
-      imageUrl: file.preview,
-      author: currentUsername.value,
-      authorAvatar: currentUserAvatar.value,
-      category: uploadForm.value.category,
-      tags: [...uploadForm.value.tags],
-      likes: 0,
-      views: 0,
-      collects: 0,
-      isLiked: false,
-      isCollected: false,
-      isFollowing: false,
-      isPublic: uploadForm.value.isPublic,
-      allowDownload: uploadForm.value.allowDownload,
-      createTime: new Date().toISOString(),
-      imageHeight: 200,
-      comments: []
+    if (succeeded) {
+      await loadWorks()
+      showUploadDialog.value = false
+      resetUploadDialog()
+      showSuccessAnimation.value = true
+      setTimeout(() => { showSuccessAnimation.value = false }, 2000)
+      ElMessage.success(`成功发布 ${succeeded} 个作品`)
     }
-    works.value.unshift(newWork)
-  }
-  
-  isUploading.value = false
-  showUploadDialog.value = false
-  resetUploadDialog()
-  
-  showSuccessAnimation.value = true
-  setTimeout(() => {
-    showSuccessAnimation.value = false
-  }, 2000)
-  
-  ElMessage.success(`成功上传 ${uploadFiles.value.length} 个作品！`)
+  } finally { isUploading.value = false }
 }
 
 function handleImageError(e) {
@@ -1663,7 +1114,7 @@ function animateStats() {
 }
 
 onMounted(() => {
-  animateStats()
+  loadWorks()
   window.addEventListener('scroll', handleScroll)
 })
 
@@ -3427,3 +2878,5 @@ onUnmounted(() => {
   }
 }
 </style>
+
+<style scoped src="@/styles/culture-chapters.css"></style>

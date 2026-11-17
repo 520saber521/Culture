@@ -1,0 +1,76 @@
+/* Ma Shan Zheng, SIL OFL. Subset for the brand display copy; body text uses system fonts. */
+@font-face{font-family:"Jiangnan Display";src:url("/fonts/jiangnan-display.woff2") format("woff2");font-weight:400;font-style:normal;font-display:swap}
+:root {
+  --brand-paper: #F7F8F4;
+  --brand-surface: #FFFFFF;
+  --brand-ink: #282B25;
+  --brand-muted: #707268;
+  --brand-red: #AD2440;
+  --brand-red-dark: #8E1932;
+  --brand-line: #D7D9CF;
+  --brand-gold: #D4B568;
+  --brand-jade: #DDE8D9;
+  --brand-deep-green: #485D4C;
+  --brand-water-ink: #678E87;
+  --brand-water-wash: #BDD4C8;
+  --brand-display: "Jiangnan Display", "KaiTi", "STKaiti", serif;
+  --brand-serif: "Noto Serif SC", "Songti SC", "SimSun", serif;
+  --brand-sans: "PingFang SC", "Microsoft YaHei", sans-serif;
+  --brand-nav-height: 74px;
+  --brand-gutter: clamp(20px, 4vw, 72px);
+}
+/* Book-label proportions: red ink, a fine inset rule, brush lettering and a separate entry mark. */
+.brand-button {
+  --button-rule: #e0bca1;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  box-sizing: border-box;
+  background: var(--brand-red);
+  color: #fff8e9;
+  border: 1px solid var(--brand-red-dark);
+  border-radius: 4px;
+  padding: 0 18px;
+  cursor: pointer;
+  transition: background-color .18s, border-color .18s;
+}
+.brand-button::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid var(--button-rule);
+  border-radius: 1px;
+  opacity: .7;
+  pointer-events: none;
+}
+.brand-button__label {
+  flex: 1;
+  font: 400 23px/1 var(--brand-display);
+  letter-spacing: 3px;
+  white-space: nowrap;
+  text-align: center;
+}
+.brand-button__end {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 18px;
+  padding-left: 9px;
+  border-left: 1px solid var(--button-rule);
+  color: #f0d8b4;
+}
+.brand-button:hover:not(:disabled) { background: var(--brand-red-dark); border-color: var(--brand-red-dark); }
+.brand-button:disabled { background: #967b7d; border-color: #967b7d; cursor: not-allowed; }
+.brand-button[aria-busy="true"] { cursor: wait; }
+.brand-button:focus-visible { outline: 2px solid var(--brand-red); outline-offset: 3px; }
+.brand-button__spinner { height: 12px; width: 12px; border: 1px solid #d6b7a2; border-top-color: #fff8e9; border-radius: 50%; animation: brand-button-spin .8s linear infinite; }
+@keyframes brand-button-spin { to { transform: rotate(360deg); } }
+@media(max-width:600px) { .login-btn .brand-button__label { font-size: 20px; letter-spacing: 1px; }.login-btn .brand-button__end { width: 15px; padding-left: 5px; height: 14px; }.login-btn .brand-button__end svg { width: 11px; } }
+@media(prefers-reduced-motion:reduce) { .brand-button { transition: none; }.brand-button__spinner { animation: none; } }
+@media(max-width:760px){:root{--brand-nav-height:64px;--brand-gutter:16px}}
+@media(max-width:360px){:root{--brand-gutter:10px}}
+
+@font-face{font-family:"Jiangnan Chapters";src:url("/fonts/jiangnan-chapters.woff2") format("woff2");font-weight:400;font-style:normal;font-display:swap}

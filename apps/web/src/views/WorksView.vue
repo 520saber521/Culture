@@ -24,7 +24,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { get, getToken, post, upload } from '@/utils/api/request'
+import { del, get, getToken, post, upload } from '@/utils/api/request'
 
 const router = useRouter()
 const loggedIn = ref(Boolean(getToken()))
@@ -56,11 +56,14 @@ async function saveWork() {
   if (file.value.size > 5 * 1024 * 1024) { message.value = '图片不能超过 5 MB'; return }
   busy.value = true
   message.value = ''
+  let uploadedPath = ''
   try {
     const image = await upload('/works/upload', file.value)
     if (image.code !== 200) throw new Error(image.message || '上传失败')
-    const saved = await post('/works', { title: form.title, description: form.description, imageUrl: image.data.url, isPublic: true })
+    uploadedPath = image.data.path
+    const saved = await post('/works', { title: form.title, description: form.description, imagePath: uploadedPath, isPublic: true })
     if (saved.code !== 200) throw new Error(saved.message || '作品保存失败')
+    uploadedPath = ''
     form.title = ''
     form.description = ''
     file.value = null
@@ -69,7 +72,10 @@ async function saveWork() {
     preview.value = ''
     message.value = '作品已保存'
     await loadWorks()
-  } catch (error) { message.value = error.message }
+  } catch (error) {
+    if (uploadedPath) await del(`/works/upload?path=${encodeURIComponent(uploadedPath)}`)
+    message.value = error.message
+  }
   finally { busy.value = false }
 }
 onMounted(() => { if (loggedIn.value) loadWorks() })

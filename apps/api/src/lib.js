@@ -47,6 +47,28 @@ export function getRedis(c) {
   return url && token ? new Redis({ url, token }) : null
 }
 
+const localLimits = new Map()
+export async function rateLimit(c, scope, key, limit, seconds) {
+  const bucket = Math.floor(Date.now() / (seconds * 1000))
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key))
+  const identity = [...new Uint8Array(hash)].slice(0, 16).map((byte) => byte.toString(16).padStart(2, '0')).join('')
+  const name = `limit:${scope}:${identity}:${bucket}`
+  const redis = getRedis(c)
+  let count
+  if (redis) {
+    try {
+      count = await redis.incr(name)
+      if (count === 1) await redis.expire(name, seconds + 1)
+    } catch (error) { console.warn('Rate limit store failed:', error.message) }
+  }
+  if (count === undefined) {
+    if (localLimits.size > 10000) localLimits.clear()
+    count = (localLimits.get(name) || 0) + 1
+    localLimits.set(name, count)
+  }
+  if (count > limit) throw new AppError(429, '请求过于频繁，请稍后重试')
+}
+
 export function ok(c, data = null, message = '操作成功', status = 200) {
   return c.json({ code: 200, message, data, timestamp: Date.now() }, status)
 }

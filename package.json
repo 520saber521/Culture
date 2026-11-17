@@ -4,6 +4,7 @@
   "private": true,
   "description": "江苏文化传承与创新平台",
   "scripts": {
+    "dev": "node scripts/dev.mjs",
     "install:all": "npm --prefix apps/web ci && npm --prefix apps/api ci",
     "dev:web": "npm --prefix apps/web run dev",
     "dev:api": "npm --prefix apps/api run dev",

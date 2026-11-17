@@ -8,8 +8,11 @@
 
 ## 本地启动
 
-1. 在 Supabase 新建项目，在 SQL Editor 执行 `supabase/migrations/001_initial_schema.sql`。
-   如需作品图片上传，再执行 `supabase/migrations/002_work_images.sql`，创建公开的 `user-works` Storage bucket。
+没有 Supabase 凭据时，运行 `npm run dev` 会启动本地开发后端，账号、会话、作品与图片保存在被 Git 忽略的 `.local-data` 目录中。它只供本机开发使用，不会由 Vercel 或 Cloudflare 入口加载。配置完整的 Supabase 变量后，`npm run dev` 自动使用正式 API；也可设置 `LOCAL_API_MODE=1` 强制使用本地后端。
+
+本地管理员账号可在 `apps/api` 目录执行 `npm run create-local-admin` 创建。命令随机生成初始密码，只显示一次；新建账号要重启本地 API 后才会被正在运行的进程读取。本地管理员可在 `/admin/news` 创建、编辑、发布和撤回新闻。正式 Supabase 环境的角色仍通过下文的 `set-role` 命令管理。
+
+1. 在 Supabase 新建项目，在 SQL Editor 依次执行 `supabase/migrations/001_initial_schema.sql`、`002_work_images.sql`、`003_private_work_images.sql`。第三份迁移将作品图片 bucket 改为私有，并增加点赞、内容来源、操作日志和 AI 额度所需表与函数。已有图片的公开 URL 会由 API 转换成短期签名 URL；已被外部复制或缓存的旧链接无法追溯撤回。
 2. 复制 `.env.example` 为 `.env`，填入 Supabase 项目地址、Publishable Key 与 Secret Key。
 3. 安装并启动：
 
@@ -19,8 +22,11 @@ npm run dev
 ```
 
 健康检查地址为 `http://localhost:8787/api/health`。前端开发环境默认连接这个地址。
+`/api/health/ready` 会实际查询数据库，适合部署后的就绪检查；数据库不可用时返回 503。
 
 Secret Key 只能放在服务端环境变量中，绝不能使用 `VITE_` 前缀或提交到 Git。
+
+管理员权限由可信任的部署者在服务端分配或撤销：在 `apps/api` 目录运行 `npm run set-role -- <用户名> admin` 或 `npm run set-role -- <用户名> user`。此命令需要 Secret Key，并将操作写入 `operation_logs`；不要放到前端或开放 HTTP 接口。
 
 ## 部署
 
@@ -49,12 +55,24 @@ Cloudflare Workers Free 不是“无限请求”，当前上限是每天 100,000
 - `cities` / `categories`
 - `heritage` / `traditional-arts` / `celebrities` / `news`
 - `works`：公开列表、我的作品、增删改、点赞
-- `POST /api/works/upload`：登录后上传 5 MB 以内的 JPG/PNG/WebP 图片到 Supabase Storage；返回公开 URL。
-- `PUT /api/admin/news/:id`：仅 `profiles.role = 'admin'` 可编辑现有新闻标题、摘要与正文。管理员角色需在可信任的管理端分配。
+- `POST /api/works/upload`：登录后上传 5 MB 以内的 JPG/PNG/WebP 图片到私有 Storage；返回图片路径，创建作品时传 `imagePath`。`DELETE /api/works/upload?path=...` 可清理未关联作品的本人图片。
+- `GET/POST/PUT/DELETE /api/admin/content/:type`：管理员维护城市、分类、非遗、传统艺术、名人和新闻；新内容默认草稿。`POST /api/admin/content/:type/:id/status` 可发布或撤回，`GET /api/admin/operation-logs` 可查操作记录。
+- `PUT /api/admin/news/:id`：兼容旧新闻编辑接口；仅 `profiles.role = 'admin'` 可编辑。管理员角色需在可信任的管理端分配。
+- `GET /api/admin/metrics`：管理员查看各类内容当前数量和最近 7 天搜索有结果率、作品记录保存成功率的原始计数。搜索率按返回至少一条结果计算；作品保存率按图片验证通过后的数据库写入尝试计算。
+- `GET /api/city-features/list`：已发布的城市景点、活动与美食资料；管理员通过 `cityFeatures` 内容类型维护。
+- `POST /api/reports`：登录用户举报公开作品或评论；`GET /api/admin/reports` 和 `POST /api/admin/reports/:id/review` 供管理员处理。
 - `comments` / `collections`
 - `search`：全局搜索、热门关键词、个人历史
 
 旧版 `/heritage/:id`、`/art/:id`、`/celebrity/:id`、`/news/:id` 路径也保留了兼容别名。
+
+私密作品仅作者和管理员可通过详情读取；公开图库、搜索和收藏列表只返回公开作品。作品图片由 API 签发一小时有效的访问链接。新部署需要配置持久化 Redis 才能在多实例之间共享接口限流计数；未配置时限流只在单实例内生效。AI 生图另由数据库维护每日额度，默认每位用户每日 5 次，可通过 `AI_DAILY_LIMIT` 调整。新闻正文在写入和读取时都按允许标签清洗。
+
+## 目标环境验收
+
+1. 依次执行三份迁移，确认 `user-works` bucket 为私有；配置服务端变量和受控管理员账号。
+2. 导入有来源和授权信息的内容，分别验收游客浏览、注册登录、公开与私密作品、图库发布、评论收藏、新闻草稿发布、举报处理和 AI 额度。
+3. 将 `/api/health/ready` 纳入部署监控，配置数据库及 Storage 的定期备份，并定期验证恢复。备份策略和告警渠道依实际 Supabase 项目及托管平台配置。
 
 ## 数据迁移说明
 

@@ -1,8 +1,8 @@
 <template>
   <main class="editor-page">
-    <header><p>EDITORIAL DESK · JIANGSU</p><h1>文化动态编辑台</h1><span>仅管理员可保存。这里编辑现有新闻的标题、摘要与正文。</span></header>
+    <header><p>EDITORIAL DESK · JIANGSU</p><h1>文化动态编辑台</h1><span>管理员可创建草稿、编辑、发布和撤回文化动态。</span></header>
     <div class="editor-layout">
-      <aside><h2>选择文章</h2><p v-if="loading">正在加载…</p><button v-for="item in articles" :key="item.id" :class="{ active: item.id === selectedId }" @click="openArticle(item.id)">{{ item.title }}</button></aside>
+      <aside><h2>选择文章</h2><button @click="createArticle">＋ 新建草稿</button><p v-if="loading">正在加载…</p><button v-for="item in articles" :key="item.id" :class="{ active: item.id === selectedId }" @click="openArticle(item.id)">{{ item.title }} · {{ item.status === 1 ? '已发布' : '未发布' }}</button></aside>
       <section v-if="selectedId" class="editor-sheet">
         <label>标题<input v-model.trim="title" maxlength="200" /></label>
         <label>摘要<textarea v-model.trim="summary" maxlength="500" rows="3" /></label>
@@ -13,7 +13,7 @@
           <button type="button" :class="{ active: editor.isActive('bulletList') }" @click="editor.chain().focus().toggleBulletList().run()">列表</button>
         </div>
         <EditorContent :editor="editor" class="editor-content" />
-        <div class="editor-actions"><span role="status">{{ message }}</span><button :disabled="saving || !title" @click="save">{{ saving ? '保存中…' : '保存文章' }}</button></div>
+        <div class="editor-actions"><span role="status">{{ message }}</span><div><button :disabled="saving || !title" @click="save">{{ saving ? '保存中…' : '保存文章' }}</button><button :disabled="saving" @click="changeStatus(status === 1 ? 2 : 1)">{{ status === 1 ? '撤回' : '发布' }}</button></div></div>
       </section>
       <section v-else class="empty-sheet">选择左侧文章开始编辑。若列表为空，请先在 Supabase 中导入新闻数据。</section>
     </div>
@@ -24,10 +24,11 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { Editor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
-import { get, put } from '@/utils/api/request'
+import { get, post, put } from '@/utils/api/request'
 
 const articles = ref([])
 const selectedId = ref(null)
+const status = ref(0)
 const title = ref('')
 const summary = ref('')
 const message = ref('')
@@ -37,16 +38,17 @@ const editor = ref(null)
 
 async function openArticle(id) {
   message.value = ''
-  const result = await get(`/news/detail/${id}`)
+  const result = await get(`/admin/content/news/${id}`)
   if (result.code !== 200) { message.value = result.message || '文章读取失败'; return }
   selectedId.value = id
+  status.value = result.data.status
   title.value = result.data.title || ''
   summary.value = result.data.summary || ''
   editor.value?.commands.setContent(result.data.content || '')
 }
 async function save() {
   saving.value = true
-  const result = await put(`/admin/news/${selectedId.value}`, { title: title.value, summary: summary.value, content: editor.value?.getHTML() || '' })
+  const result = await put(`/admin/content/news/${selectedId.value}`, { title: title.value, summary: summary.value, content: editor.value?.getHTML() || '' })
   message.value = result.code === 200 ? '已保存' : result.message || '保存失败'
   if (result.code === 200) {
     const item = articles.value.find((article) => article.id === selectedId.value)
@@ -54,13 +56,30 @@ async function save() {
   }
   saving.value = false
 }
-onMounted(async () => {
-  editor.value = new Editor({ extensions: [StarterKit], content: '' })
+async function createArticle() {
+  const result = await post('/admin/content/news', { title: '未命名草稿', summary: '', content: '' })
+  if (result.code !== 200) { message.value = result.message || '创建失败'; return }
+  await loadArticles()
+  await openArticle(result.data)
+}
+async function changeStatus(nextStatus) {
+  saving.value = true
+  const saved = await put(`/admin/content/news/${selectedId.value}`, { title: title.value, summary: summary.value, content: editor.value?.getHTML() || '' })
+  const result = saved.code === 200 ? await post(`/admin/content/news/${selectedId.value}/status`, { status: nextStatus }) : saved
+  message.value = result.code === 200 ? '状态已更新' : result.message || '操作失败'
+  if (result.code === 200) { status.value = nextStatus; await loadArticles() }
+  saving.value = false
+}
+async function loadArticles() {
   loading.value = true
-  const result = await get('/news/list', { pageSize: 100 })
+  const result = await get('/admin/content/news', { pageSize: 100 })
   articles.value = result.code === 200 ? result.data.records || [] : []
   if (result.code !== 200) message.value = result.message || '新闻加载失败'
   loading.value = false
+}
+onMounted(async () => {
+  editor.value = new Editor({ extensions: [StarterKit], content: '' })
+  await loadArticles()
 })
 onBeforeUnmount(() => editor.value?.destroy())
 </script>

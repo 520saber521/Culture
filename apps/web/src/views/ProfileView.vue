@@ -76,9 +76,9 @@
                   <circle cx="11" cy="11" r="8"/>
                   <path d="M21 21L16.65 16.65"/>
                 </svg>
-                <span>探索文化库</span>
+                <span>走进江苏</span>
               </button>
-              <button class="quick-action-btn" @click="router.push('/ai-design')">
+              <button class="quick-action-btn" @click="router.push('/design')">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M12 19L19 12L22 15L15 22L12 19Z"/>
                   <path d="M18 13L16.5 5.5L2 2L5.5 16.5L13 18L18 13Z"/>

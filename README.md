@@ -22,24 +22,24 @@ Cultural/
 
 ## 快速开始
 
+本地体验登录和图库可直接运行 `npm run dev`（启动前端与 API）。未配置 Supabase 时，API 自动使用仅供本机开发的持久化数据目录 `apps/api/.local-data`；首次使用请在登录页注册账号。正式部署仍需配置 Supabase，并执行三份数据库迁移。
+
 要求 Node.js 20 或更高版本。
 
 ```bash
 # 安装前端和 API 依赖
 npm run install:all
 
-# 终端 1：启动 API（http://localhost:8787）
-npm run dev:api
-
-# 终端 2：启动前端（http://localhost:3000）
-npm run dev:web
+# 同时启动 API（http://localhost:8787）和前端（http://localhost:3000）
+npm run dev
 ```
 
-API 启动前需复制 `apps/api/.env.example` 为 `apps/api/.env`，填写 Supabase 环境变量，并执行：
+如需连接 Supabase，在启动前复制 `apps/api/.env.example` 为 `apps/api/.env`，填写环境变量并依次执行：
 
 ```text
 apps/api/supabase/migrations/001_initial_schema.sql
 apps/api/supabase/migrations/002_work_images.sql
+apps/api/supabase/migrations/003_private_work_images.sql
 ```
 
 ## 常用命令
@@ -56,6 +56,8 @@ npm run check:api   # 仅检查 API
 - [`apps/api/README.md`](apps/api/README.md)
 - [`apps/web/README.md`](apps/web/README.md)
 - [`docs/README.md`](docs/README.md)
+- [`docs/product/PRD.md`](docs/product/PRD.md)
+- [`docs/planning/项目规划.md`](docs/planning/项目规划.md)
 - [`docs/technical/技术实现文档.md`](docs/technical/技术实现文档.md)
 
 ## 说明

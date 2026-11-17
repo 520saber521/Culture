@@ -10,6 +10,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue';
 // 引入 Ant Design Vue
 import Antd from 'ant-design-vue';
 import 'ant-design-vue/dist/reset.css';
+import './styles/brand.css';
 
 const app = createApp(App);
 

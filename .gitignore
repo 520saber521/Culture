@@ -17,6 +17,14 @@ logs/
 
 # Local recoverable backups created while normalizing the repository.
 .local-backups/
+apps/api/.local-data/
+
+# Generated previews, local scratch files and Python caches.
+output/
+tmp/
+__pycache__/
+*.py[cod]
+*.lnk
 
 # Editor directories and files
 .vscode/*

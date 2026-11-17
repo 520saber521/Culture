@@ -19,8 +19,7 @@ export const authApi = {
   getCurrentUser: () => get('/auth/info'),
   updateCurrentUser: (data) => put('/auth/info', data),
   updatePassword: (oldPassword, newPassword) => {
-    const params = new URLSearchParams({ oldPassword, newPassword })
-    return put(`/auth/password?${params.toString()}`)
+    return put('/auth/password', { oldPassword, newPassword })
   },
 }
 

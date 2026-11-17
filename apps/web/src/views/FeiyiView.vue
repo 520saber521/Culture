@@ -1,37 +1,9 @@
 <template>
-  <div class="feiyi-container" ref="containerRef">
-    <div class="floating-particles" ref="particlesRef">
-      <div v-for="i in 20" :key="i" class="particle" :style="getParticleStyle(i)"></div>
-    </div>
+  <div class="feiyi-container culture-chapter" ref="containerRef">
 
-    <section class="page-header">
-      <div class="header-bg-pattern"></div>
-      <div class="header-wave">
-        <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
-          <path d="M0,60 C360,120 720,0 1080,60 C1260,90 1380,30 1440,60 L1440,120 L0,120 Z" fill="#FAFAFA"/>
-        </svg>
-      </div>
-      <div class="header-content">
-        <h1 class="page-title">
-          <span class="title-char" v-for="(char, index) in titleChars" :key="index" :style="{ animationDelay: `${index * 0.1}s` }">{{ char }}</span>
-        </h1>
-        <p class="page-subtitle">探索千年文化瑰宝，传承民族精神血脉</p>
-        
-        <div class="header-stats">
-          <div class="stat-item" v-for="(stat, index) in statsData" :key="index">
-            <div class="stat-icon">
-              <component :is="stat.icon" />
-            </div>
-            <div class="stat-info">
-              <span class="stat-number">
-                <span class="counter" :data-target="stat.value">{{ animatedStats[index] }}</span>
-              </span>
-              <span class="stat-label">{{ stat.label }}</span>
-            </div>
-          </div>
-        </div>
 
-        <div class="header-search">
+    <CultureChapterHeader kind="heritage" />
+<div class="chapter-search-area">        <div class="header-search">
           <div class="search-wrapper">
             <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
               <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
@@ -58,8 +30,7 @@
             >{{ tag }}</button>
           </div>
         </div>
-      </div>
-    </section>
+</div>
 
     <div class="main-content">
       <div class="left-content">
@@ -85,7 +56,7 @@
             >
               <div class="cat-icon" v-html="cat.icon"></div>
               <span class="cat-name">{{ cat.label }}</span>
-              <span class="cat-count">{{ getCategoryCount(cat.value) }}</span>
+              <span class="cat-count" v-if="!pageLoading && !loadError">{{ getCategoryCount(cat.value) }}</span>
             </button>
           </div>
         </section>
@@ -145,7 +116,7 @@
               非遗项目列表
             </h3>
             <div class="view-controls">
-              <span class="result-count">共 <strong>{{ filteredItems.length }}</strong> 项结果</span>
+              <span class="result-count" v-if="!pageLoading && !loadError">共 <strong>{{ filteredItems.length }}</strong> 项结果</span>
               <div class="view-modes">
                 <button 
                   class="view-mode-btn" 
@@ -187,7 +158,7 @@
             <div 
               v-for="(item, index) in paginatedItems" 
               :key="item.id" 
-              class="project-card"
+              class="project-card" role="button" tabindex="0" @keydown.enter.self="goToDetail(item)" @keydown.space.self.prevent="goToDetail(item)"
               :style="{ animationDelay: `${index * 0.08}s` }"
               @click="goToDetail(item)"
               @mouseenter="hoveredItem = item.id"
@@ -272,25 +243,13 @@
             />
           </div>
 
-          <div v-if="filteredItems.length === 0" class="empty-state">
-            <div class="empty-icon">
-              <svg width="80" height="80" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 2"/>
-                <path d="M8 15C8 15 9.5 17 12 17C14.5 17 16 15 16 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                <circle cx="9" cy="9" r="1.5" fill="currentColor"/>
-                <circle cx="15" cy="9" r="1.5" fill="currentColor"/>
-              </svg>
-            </div>
-            <h4>暂无符合条件的非遗项目</h4>
-            <p>尝试调整筛选条件或搜索其他关键词</p>
-            <el-button type="primary" @click="resetFilter" class="reset-empty-btn">清除筛选条件</el-button>
-          </div>
+          <CulturePageState :loading="pageLoading" :error="loadError" :empty="!filteredItems.length" @retry="loadPage" @reset="resetFilter" />
         </section>
       </div>
 
-      <div class="right-sidebar">
+      <div class="right-sidebar" v-if="featuredItems.length || newsList.length">
         <div class="sidebar-content">
-          <section class="featured-section sidebar-card">
+          <section v-if="featuredItems.length" class="featured-section sidebar-card">
             <div class="sidebar-header">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -316,7 +275,7 @@
             </div>
           </section>
 
-          <section class="news-section sidebar-card">
+          <section v-if="newsList.length" class="news-section sidebar-card">
             <div class="sidebar-header">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M19 20H5C3.89543 20 3 19.1046 3 18V6C3 4.89543 3.89543 4 5 4H19C20.1046 4 21 4.89543 21 6V18C21 19.1046 20.1046 20 19 20Z" stroke="currentColor" stroke-width="2"/>
@@ -359,55 +318,9 @@
             </div>
           </section>
 
-          <section class="map-section sidebar-card">
-            <div class="sidebar-header">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M21 10C21 17 12 23 12 23C12 23 3 17 3 10C3 7.61305 3.94821 5.32387 5.63604 3.63604C7.32387 1.94821 9.61305 1 12 1C14.3869 1 16.6761 1.94821 18.364 3.63604C20.0518 5.32387 21 7.61305 21 10Z" stroke="currentColor" stroke-width="2"/>
-                <circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="2"/>
-              </svg>
-              <h3 class="sidebar-title">非遗地图</h3>
-            </div>
-            <div class="map-container">
-              <div class="map-visual">
-                <svg viewBox="0 0 200 160" class="jiangsu-map">
-                  <defs>
-                    <linearGradient id="mapGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" style="stop-color:#fff5f5"/>
-                      <stop offset="100%" style="stop-color:#ffe8e8"/>
-                    </linearGradient>
-                  </defs>
-                  <path class="map-outline" d="M100 10 L180 50 L180 130 L100 150 L20 130 L20 50 Z" fill="url(#mapGradient)" stroke="#C00C00" stroke-width="2"/>
-                  <g class="map-points">
-                    <circle cx="100" cy="40" r="6" fill="#C00C00" class="map-point point-suzhou">
-                      <animate attributeName="r" values="6;8;6" dur="2s" repeatCount="indefinite"/>
-                    </circle>
-                    <circle cx="80" cy="70" r="5" fill="#C00C00" opacity="0.8" class="map-point"/>
-                    <circle cx="130" cy="60" r="5" fill="#C00C00" opacity="0.8" class="map-point"/>
-                    <circle cx="60" cy="100" r="4" fill="#C00C00" opacity="0.6" class="map-point"/>
-                    <circle cx="140" cy="90" r="4" fill="#C00C00" opacity="0.6" class="map-point"/>
-                    <circle cx="100" cy="110" r="4" fill="#C00C00" opacity="0.6" class="map-point"/>
-                  </g>
-                  <g class="map-labels">
-                    <text x="100" y="30" text-anchor="middle" fill="#333" font-size="8">苏州</text>
-                    <text x="80" y="60" text-anchor="middle" fill="#333" font-size="7">南京</text>
-                    <text x="130" y="50" text-anchor="middle" fill="#333" font-size="7">无锡</text>
-                  </g>
-                </svg>
-              </div>
-              <div class="map-legend">
-                <div class="legend-item">
-                  <span class="legend-dot national"></span>
-                  <span>国家级非遗</span>
-                </div>
-                <div class="legend-item">
-                  <span class="legend-dot provincial"></span>
-                  <span>省级非遗</span>
-                </div>
-              </div>
-            </div>
-          </section>
 
-          <section class="forum-section sidebar-card">
+
+          <section v-if="forumTopics.length" class="forum-section sidebar-card">
             <div class="sidebar-header">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="currentColor" stroke-width="2"/>
@@ -431,7 +344,7 @@
     <el-dialog
       v-model="showDetailDialog"
       :title="selectedItem?.name || '项目详情'"
-      width="800px"
+      width="min(800px, calc(100vw - 32px))"
       class="detail-dialog"
       destroy-on-close
     >
@@ -549,9 +462,12 @@
 </template>
 
 <script setup>
+import CultureChapterHeader from "@/components/CultureChapterHeader.vue"
+import CulturePageState from "@/components/CulturePageState.vue"
 import { ref, computed, onMounted, onUnmounted, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { get, post, getToken } from '@/utils/api/request'
 
 const router = useRouter()
 const containerRef = ref(null)
@@ -575,15 +491,15 @@ const showBackTop = ref(false)
 const titleChars = '江苏非物质文化遗产'.split('')
 
 const statsData = [
-  { value: 12, label: '非遗项目', icon: h('svg', { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none' }, [
+  { value: 0, label: '非遗项目', icon: h('svg', { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none' }, [
     h('path', { d: 'M12 2L2 7L12 12L22 7L12 2Z', stroke: 'currentColor', 'stroke-width': 2 }),
     h('path', { d: 'M2 17L12 22L22 17', stroke: 'currentColor', 'stroke-width': 2 }),
     h('path', { d: 'M2 12L12 17L22 12', stroke: 'currentColor', 'stroke-width': 2 })
   ])},
-  { value: 9, label: '国家级', icon: h('svg', { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none' }, [
+  { value: 0, label: '国家级', icon: h('svg', { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none' }, [
     h('path', { d: 'M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z', stroke: 'currentColor', 'stroke-width': 2 })
   ])},
-  { value: 3, label: '省级', icon: h('svg', { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none' }, [
+  { value: 0, label: '省级', icon: h('svg', { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none' }, [
     h('circle', { cx: 12, cy: 12, r: 10, stroke: 'currentColor', 'stroke-width': 2 }),
     h('path', { d: 'M12 6V12L16 14', stroke: 'currentColor', 'stroke-width': 2 })
   ])}
@@ -617,183 +533,13 @@ const cloudTags = [
   { name: '蓝印花布', size: 13 }
 ]
 
-const heritageItems = ref([
-  {
-    id: 1,
-    name: '苏州园林营造技艺',
-    level: '国家级',
-    category: '传统技艺',
-    region: '苏州',
-    inheritor: '香山帮匠人',
-    description: '苏州园林营造技艺是中国传统园林建筑的杰出代表，以其精巧的设计和精湛的工艺闻名于世。苏州园林以"虽由人作，宛自天开"为造园理念，融建筑、山水、花木、雕刻、书画于一体。',
-    history: '苏州园林历史悠久，可追溯至春秋时期。明清时期达到鼎盛，形成了独特的江南园林风格。',
-    features: ['借景造园，移步换景', '山水相依，曲径通幽', '建筑精美，雕梁画栋', '植物配置，四季有景'],
-    tags: ['园林', '建筑', '世界遗产', '江南'],
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Suzhou%20classical%20garden%20traditional%20Chinese%20architecture&image_size=landscape_16_9',
-    isFavorite: false
-  },
-  {
-    id: 2,
-    name: '南京云锦织造技艺',
-    level: '国家级',
-    category: '传统技艺',
-    region: '南京',
-    inheritor: '周双喜',
-    description: '南京云锦织造技艺是中国传统丝织工艺的杰出代表，以其绚丽的色彩和精湛的工艺著称，被誉为"东方瑰宝"、"中华一绝"。',
-    history: '南京云锦始于元代，盛于明清，是元、明、清三朝皇家御用贡品。',
-    features: ['妆花工艺，色彩绚丽', '通经断纬，技艺精湛', '金线银线，华贵典雅', '图案丰富，寓意吉祥'],
-    tags: ['云锦', '织造', '丝绸', '皇家贡品'],
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Nanjing%20Yunjin%20brocade%20traditional%20Chinese%20silk&image_size=landscape_16_9',
-    isFavorite: false
-  },
-  {
-    id: 3,
-    name: '苏州评弹',
-    level: '国家级',
-    category: '曲艺',
-    region: '苏州',
-    inheritor: '邢晏春',
-    description: '苏州评弹是苏州地区的传统曲艺形式，包括评话和弹词两种艺术形式，以其优美的唱腔和生动的表演深受观众喜爱。',
-    history: '苏州评弹起源于明代，清代达到鼎盛，是江南地区最具代表性的曲艺形式之一。',
-    features: ['吴侬软语，韵味悠长', '说噱弹唱，四艺俱全', '三弦琵琶，伴奏悠扬', '故事生动，雅俗共赏'],
-    tags: ['评弹', '曲艺', '吴语', '三弦'],
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Suzhou%20Pingtan%20traditional%20Chinese%20storytelling&image_size=landscape_16_9',
-    isFavorite: false
-  },
-  {
-    id: 4,
-    name: '扬州漆器髹饰技艺',
-    level: '国家级',
-    category: '传统技艺',
-    region: '扬州',
-    description: '扬州漆器髹饰技艺是中国传统漆器工艺的重要流派，以其精湛的髹饰技艺和独特的艺术风格著称，历史悠久，工艺精湛。',
-    history: '扬州漆器始于战国，兴于汉唐，盛于明清，是中国漆器艺术的重要代表。',
-    features: ['点螺工艺，精巧细腻', '雕漆嵌玉，富丽堂皇', '百宝镶嵌，华美绝伦', '漆画艺术，意境深远'],
-    tags: ['漆器', '髹饰', '点螺', '镶嵌'],
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Yangzhou%20lacquerware%20traditional%20Chinese%20craft&image_size=landscape_16_9',
-    isFavorite: false
-  },
-  {
-    id: 5,
-    name: '宜兴紫砂陶制作技艺',
-    level: '国家级',
-    category: '传统技艺',
-    region: '宜兴',
-    inheritor: '徐秀棠',
-    description: '宜兴紫砂陶制作技艺是江苏宜兴地区的传统制陶工艺，以其独特的泥料和精湛的成型技艺闻名于世，是中国陶瓷艺术的瑰宝。',
-    history: '宜兴紫砂始于北宋，盛于明清，是文人雅士钟爱的茶具之选。',
-    features: ['紫砂泥料，透气性好', '手工成型，造型丰富', '泡茶留香，越用越润', '名家作品，收藏价值高'],
-    tags: ['紫砂', '陶艺', '茶具', '宜兴'],
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Yixing%20purple%20clay%20teapot%20traditional%20Chinese%20ceramic&image_size=landscape_16_9',
-    isFavorite: false
-  },
-  {
-    id: 6,
-    name: '昆曲',
-    level: '国家级',
-    category: '传统戏剧',
-    region: '苏州昆山',
-    inheritor: '张继青',
-    description: '昆曲是中国最古老的戏曲剧种之一，发源于江苏昆山，以其优美的唱腔和细腻的表演著称，被誉为"百戏之祖"。',
-    history: '昆曲起源于元末明初，明代嘉靖年间经魏良辅改良后风行全国，2001年入选联合国教科文组织"人类口述和非物质遗产代表作"。',
-    features: ['水磨腔调，婉转悠扬', '载歌载舞，身段优美', '文词典雅，意境深远', '生旦净丑，行当齐全'],
-    tags: ['昆曲', '戏曲', '百戏之祖', '世界遗产'],
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Kunqu%20opera%20traditional%20Chinese%20theater%20performance&image_size=landscape_16_9',
-    isFavorite: false
-  },
-  {
-    id: 7,
-    name: '惠山泥人',
-    level: '国家级',
-    category: '传统美术',
-    region: '无锡',
-    description: '惠山泥人是江苏无锡惠山地区的传统民间美术，以其造型生动、色彩鲜艳的特点深受人们喜爱，是江南民间艺术的代表。',
-    history: '惠山泥人始于南北朝，盛于明清，以"手捏戏文"和"大阿福"最为著名。',
-    features: ['造型夸张，神态生动', '色彩艳丽，对比强烈', '线条流畅，装饰性强', '题材丰富，寓意吉祥'],
-    tags: ['泥人', '民间艺术', '大阿福', '无锡'],
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Huishan%20clay%20figurine%20traditional%20Chinese%20folk%20art&image_size=landscape_16_9',
-    isFavorite: false
-  },
-  {
-    id: 8,
-    name: '常州梳篦制作技艺',
-    level: '省级',
-    category: '传统技艺',
-    region: '常州',
-    description: '常州梳篦制作技艺是江苏常州地区的传统手工艺，以其精湛的制作工艺和精美的造型著称，有"宫梳名篦"之美誉。',
-    history: '常州梳篦始于魏晋，盛于明清，曾是宫廷贡品。',
-    features: ['选材考究，质地坚韧', '工艺精细，齿尖圆润', '雕刻精美，图案丰富', '实用美观，养生保健'],
-    tags: ['梳篦', '手工艺', '宫廷贡品', '常州'],
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Changzhou%20comb%20traditional%20Chinese%20handicraft&image_size=landscape_16_9',
-    isFavorite: false
-  },
-  {
-    id: 9,
-    name: '苏绣',
-    level: '国家级',
-    category: '传统美术',
-    region: '苏州',
-    inheritor: '姚建萍',
-    description: '苏绣是苏州地区的传统刺绣工艺，以其精细的针法和精美的图案著称，是中国四大名绣之一。',
-    history: '苏绣历史悠久，三国时期已有记载，明清时期达到鼎盛，形成了独特的艺术风格。',
-    features: ['针法精细，丝理圆转', '色彩雅致，层次分明', '题材广泛，意境深远', '双面绣技，巧夺天工'],
-    tags: ['苏绣', '刺绣', '四大名绣', '双面绣'],
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Suzhou%20embroidery%20traditional%20Chinese%20art&image_size=landscape_16_9',
-    isFavorite: false
-  },
-  {
-    id: 10,
-    name: '南通蓝印花布印染技艺',
-    level: '国家级',
-    category: '传统技艺',
-    region: '南通',
-    description: '南通蓝印花布印染技艺是江苏南通地区的传统印染工艺，以其独特的蓝白图案和精湛的印染技艺著称，是江南民间纺织艺术的代表。',
-    history: '南通蓝印花布始于宋代，盛于明清，是民间日常生活的必需品。',
-    features: ['蓝白相间，清新素雅', '图案丰富，寓意吉祥', '手工印染，自然环保', '质地柔软，经久耐用'],
-    tags: ['蓝印花布', '印染', '民间艺术', '南通'],
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Nantong%20blue%20calico%20traditional%20Chinese%20textile&image_size=landscape_16_9',
-    isFavorite: false
-  },
-  {
-    id: 11,
-    name: '徐州剪纸',
-    level: '省级',
-    category: '传统美术',
-    region: '徐州',
-    description: '徐州剪纸是江苏徐州地区的传统民间艺术，以其粗犷的风格和生动的造型著称，是苏北民间艺术的代表。',
-    history: '徐州剪纸历史悠久，具有浓郁的北方民间艺术特色。',
-    features: ['线条粗犷，风格豪放', '造型夸张，神态生动', '题材广泛，寓意深刻', '刀法利落，一气呵成'],
-    tags: ['剪纸', '民间艺术', '苏北', '徐州'],
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Xuzhou%20paper%20cutting%20traditional%20Chinese%20folk%20art&image_size=landscape_16_9',
-    isFavorite: false
-  },
-  {
-    id: 12,
-    name: '海州五大宫调',
-    level: '国家级',
-    category: '传统音乐',
-    region: '连云港',
-    description: '海州五大宫调是江苏连云港海州地区的传统音乐形式，以其优美的旋律和丰富的曲目著称，是明清俗曲的活化石。',
-    history: '海州五大宫调源于明清时期，是古代宫廷音乐与民间音乐的融合。',
-    features: ['曲调优美，婉转动听', '唱腔丰富，表现力强', '曲目众多，内容广泛', '伴奏简单，易于传唱'],
-    tags: ['宫调', '传统音乐', '连云港', '明清俗曲'],
-    imageUrl: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=traditional%20Chinese%20music%20performance%20instrument&image_size=landscape_16_9',
-    isFavorite: false
-  }
-])
+const heritageItems = ref([])
+const pageLoading = ref(true)
+const loadError = ref('')
 
-const newsList = ref([
-  { title: '2026年全国非遗文化展示活动在京举行', date: '2026.01.15' },
-  { title: '中国非物质文化遗产保护工作会议召开', date: '2026.01.13' },
-  { title: '国家级非物质文化遗产代表性项目名录更新', date: '2026.01.13' },
-  { title: '非物质文化遗产数字化保护成果展', date: '2026.01.07' }
-])
+const newsList = ref([])
 
-const forumTopics = ref([
-  { title: '标准化工作是非物质文化遗产保护措施规范有序开展的软性工具', date: '2025.08.05' },
-  { title: '《非物质文化遗产数字化保护数字资源采集和著录》行业标准发布', date: '2025.08.01' },
-  { title: '中国非物质文化遗产传承人研修培训计划实施十年经验与成果', date: '2025.06.04' }
-])
+const forumTopics = ref([])
 
 const featuredItems = computed(() => {
   return heritageItems.value
@@ -818,9 +564,9 @@ const filteredItems = computed(() => {
   if (searchKeyword.value) {
     const keyword = searchKeyword.value.toLowerCase()
     result = result.filter(item => 
-      item.name.toLowerCase().includes(keyword) ||
-      item.category.toLowerCase().includes(keyword) ||
-      item.region.toLowerCase().includes(keyword) ||
+      (item.name || '').toLowerCase().includes(keyword) ||
+      (item.category || '').toLowerCase().includes(keyword) ||
+      (item.region || '').toLowerCase().includes(keyword) ||
       (item.tags && item.tags.some(tag => tag.toLowerCase().includes(keyword)))
     )
   }
@@ -896,9 +642,12 @@ function goToDetail(item) {
   showDetailDialog.value = true
 }
 
-function toggleFavorite(item) {
-  item.isFavorite = !item.isFavorite
-  ElMessage.success(item.isFavorite ? '已添加到收藏' : '已取消收藏')
+async function toggleFavorite(item) {
+  if (!getToken()) { ElMessage.warning('请先登录'); return }
+  const result = await post('/collections/toggle', { targetType: 'heritage', targetId: item.id })
+  if (result.code !== 200) { ElMessage.error(result.message || '收藏失败'); return }
+  item.isFavorite = result.data
+  ElMessage.success(result.message)
 }
 
 function shareItem(item) {
@@ -946,10 +695,33 @@ function handleScroll() {
   showBackTop.value = window.scrollY > 300
 }
 
-onMounted(() => {
-  animateStats()
-  window.addEventListener('scroll', handleScroll)
-})
+async function loadPage() {
+  pageLoading.value = true
+  loadError.value = ''
+  const [heritage, news] = await Promise.all([
+    get('/heritage/list', { pageSize: 100 }),
+    get('/news/list', { pageSize: 10 }),
+  ])
+  if (heritage.code === 200) {
+    heritageItems.value = (heritage.data.records || []).map((item) => ({
+      ...item,
+      level: item.level === 1 ? '国家级' : '省级',
+      region: item.city || '',
+      history: item.history || '',
+      features: Array.isArray(item.features) ? item.features : [],
+      tags: Array.isArray(item.tags) ? item.tags : [],
+      imageUrl: item.coverImage || '',
+      isFavorite: false,
+    }))
+    statsData[0].value = heritageItems.value.length
+    statsData[1].value = nationalCount.value
+    statsData[2].value = provincialCount.value
+    animateStats()
+  } else loadError.value = heritage.message || '非遗数据加载失败'
+  pageLoading.value = false
+  if (news.code === 200) newsList.value = (news.data.records || []).map((item) => ({ title: item.title, date: item.publishTime?.slice(0, 10) || '' }))
+}
+onMounted(() => { loadPage(); window.addEventListener('scroll', handleScroll) })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
@@ -2565,3 +2337,5 @@ onUnmounted(() => {
   }
 }
 </style>
+
+<style scoped src="@/styles/culture-chapters.css"></style>

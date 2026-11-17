@@ -1,0 +1,132 @@
+[
+  {
+    "city": "nanjing",
+    "file": "codex-clipboard-c237a2ac-98ea-4478-9fa9-0f36226b1c13.png",
+    "dimensions": [
+      1914,
+      822
+    ],
+    "originalBytes": 2784895,
+    "webBytes": 323698
+  },
+  {
+    "city": "wuxi",
+    "file": "codex-clipboard-06fc2985-86fc-4f19-91c9-cb718c7a4c7f.png",
+    "dimensions": [
+      1914,
+      822
+    ],
+    "originalBytes": 2834156,
+    "webBytes": 318688
+  },
+  {
+    "city": "xuzhou",
+    "file": "codex-clipboard-ccab840b-655d-49d1-88bd-e6a08357e04f.png",
+    "dimensions": [
+      1913,
+      822
+    ],
+    "originalBytes": 2725914,
+    "webBytes": 313856
+  },
+  {
+    "city": "yangzhou",
+    "file": "codex-clipboard-901a9c5c-afa9-41eb-8fce-32e165aef023.png",
+    "dimensions": [
+      1913,
+      822
+    ],
+    "originalBytes": 2693334,
+    "webBytes": 302456
+  },
+  {
+    "city": "changzhou",
+    "file": "codex-clipboard-1be1942d-f060-48eb-855f-ec9e828db299.png",
+    "dimensions": [
+      1916,
+      821
+    ],
+    "originalBytes": 2860887,
+    "webBytes": 329878
+  },
+  {
+    "city": "yancheng",
+    "file": "codex-clipboard-1246b7be-c050-4daf-98e2-3fa7b9cfe3fc.png",
+    "dimensions": [
+      1913,
+      822
+    ],
+    "originalBytes": 2316538,
+    "webBytes": 179796
+  },
+  {
+    "city": "suqian",
+    "file": "codex-clipboard-5cb54ed8-5040-487f-9e2f-239f2bc14418.png",
+    "dimensions": [
+      1914,
+      822
+    ],
+    "originalBytes": 3311080,
+    "webBytes": 477244
+  },
+  {
+    "city": "lianyungang",
+    "file": "codex-clipboard-08be8f7c-9577-4f7c-a370-01a921def1ef.png",
+    "dimensions": [
+      1913,
+      822
+    ],
+    "originalBytes": 2252269,
+    "webBytes": 183058
+  },
+  {
+    "city": "nantong",
+    "file": "codex-clipboard-11c1e85c-b130-48b3-a21d-29acf879a16f.png",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "originalBytes": 2195860,
+    "webBytes": 202374
+  },
+  {
+    "city": "huaian",
+    "file": "codex-clipboard-a22d5ba4-af55-4574-aa90-e29f15a27a32.png",
+    "dimensions": [
+      1916,
+      821
+    ],
+    "originalBytes": 2357747,
+    "webBytes": 220824
+  },
+  {
+    "city": "taizhou",
+    "file": "codex-clipboard-429628fd-36b4-4e8d-bd22-7eadc7669d01.png",
+    "dimensions": [
+      1913,
+      822
+    ],
+    "originalBytes": 2543609,
+    "webBytes": 270936
+  },
+  {
+    "city": "suzhou",
+    "file": "codex-clipboard-62f0d989-0a96-4e86-8170-ad0302c95905.png",
+    "dimensions": [
+      1914,
+      822
+    ],
+    "originalBytes": 3178880,
+    "webBytes": 429290
+  },
+  {
+    "city": "zhenjiang",
+    "file": "codex-clipboard-e4d5675f-4930-43f5-a6ad-e85f6324c2a0.png",
+    "dimensions": [
+      1913,
+      822
+    ],
+    "originalBytes": 3190474,
+    "webBytes": 414096
+  }
+]

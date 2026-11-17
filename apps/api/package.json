@@ -8,10 +8,12 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "node --watch src/index.js",
+    "dev": "node --watch src/local-index.js",
     "start": "node src/index.js",
     "test": "node --test",
-    "check": "node --check src/app.js && node --check src/index.js && node --check api/index.js"
+    "check": "node --check src/app.js && node --check src/index.js && node --check src/local-index.js && node --check src/local-app.js && node --check api/index.js && node --check scripts/set-role.mjs && node --check scripts/create-local-admin.mjs",
+    "set-role": "node scripts/set-role.mjs",
+    "create-local-admin": "node scripts/create-local-admin.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.6",
@@ -19,6 +21,7 @@
     "@upstash/redis": "^1.41.0",
     "dotenv": "^18.0.10",
     "hono": "^4.13.17",
+    "sanitize-html": "^2.18.2",
     "zod": "^4.6.7"
   }
 }
