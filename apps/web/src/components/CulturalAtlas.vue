@@ -429,12 +429,12 @@ onBeforeUnmount(()=>{rememberCity();rememberItem();saveReading(storage,reading.v
 </style>
 
 <style scoped>
-.water-entries{position:absolute;top:96px;right:7%;display:flex;align-items:center;gap:16px;z-index:5;color:var(--brand-muted);font:12px var(--brand-serif)}
+.water-entries{position:absolute;top:96px;right:7%;display:flex;align-items:center;gap:16px;z-index:5;color:var(--brand-muted);font:12px var(--brand-serif);background:var(--brand-paper);padding:4px 12px;border-bottom:1px solid var(--brand-line)}
 .water-entries button{border:0;border-bottom:1px solid transparent;background:transparent;color:var(--brand-deep-green);padding:8px 2px;cursor:pointer;font:16px var(--brand-serif)}
 .water-entries button:hover,.water-entries button[aria-pressed=true]{color:var(--brand-red);border-bottom-color:var(--brand-red)}
 .water-entries button:focus-visible{outline:1px solid var(--brand-red);outline-offset:4px}
 .water-entries .water-return{font:12px var(--brand-sans);margin-left:10px}
-.water-story{position:absolute;left:6%;top:25%;width:27%;max-width:340px;color:var(--brand-ink);border-top:1px solid var(--brand-line);padding-top:22px}
+.water-story{position:absolute;left:6%;top:25%;width:27%;max-width:340px;color:var(--brand-ink);border:1px solid var(--brand-line);padding:22px;box-sizing:border-box;background:var(--brand-surface)}
 .water-story h2{font:36px var(--brand-serif);margin:18px 0 12px;color:var(--brand-deep-green)}
 .water-story h3{font:16px var(--brand-serif);margin:0 0 22px;color:var(--brand-red)}
 .water-story p{font:14px/1.9 var(--brand-sans);color:var(--brand-muted);margin:12px 0}
@@ -446,7 +446,7 @@ onBeforeUnmount(()=>{rememberCity();rememberItem();saveReading(storage,reading.v
  .water-closeup .water-entries{top:84px;left:6%;right:6%}.water-entries .water-return{margin-left:auto}
  .water-closeup:before{display:none}
  .water-closeup :deep(.atlas-map){inset:125px 0 310px}
- .water-story{left:6%;right:6%;top:auto;bottom:22px;width:auto;max-width:none;padding-top:12px;background:var(--brand-paper)}
+ .water-story{left:6%;right:6%;top:auto;bottom:22px;width:auto;max-width:none;padding:12px 0 0;border:0;border-top:1px solid var(--brand-line);background:var(--brand-paper)}
  .water-story h2{font-size:25px;margin:10px 0 7px}.water-story h3{font-size:14px;margin-bottom:10px}.water-story p{font-size:12px;line-height:1.65;margin:8px 0}
  .water-story .eyebrow{font-size:9px}.water-story a{margin-top:5px}.water-story .water-story-credit{display:inline-block;margin-left:16px;font-size:9px}
 }
