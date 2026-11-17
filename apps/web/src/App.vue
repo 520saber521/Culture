@@ -82,7 +82,7 @@ onUnmounted(() => {
   </router-view>
 
   <!-- 全局页脚 -->
-  <footer v-if="route.path !== '/design'" class="page-footer" :class="{ 'footer-auth': ['/login', '/culture', '/feiyi', '/celebrities', '/traditional-arts', '/gallery'].includes(route.path) }" ref="footerRef">
+  <footer v-if="route.path !== '/design'" class="page-footer" :class="{ 'footer-auth': ['/login', '/culture', '/feiyi', '/celebrities', '/traditional-arts', '/gallery', '/profile'].includes(route.path) }" ref="footerRef">
     <div class="wave-container">
       <div v-for="i in 3" :key="i" :class="`wave wave-${i}`"></div>
     </div>

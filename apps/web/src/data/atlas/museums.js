@@ -22,3 +22,20 @@ export const cityMuseums = [
 export function museumsForCity(city) {
   return cityMuseums.find(entry => entry.cityId === city || entry.cityName === city)?.museums ?? []
 }
+
+// Editorial invitations describe the city, not current museum exhibitions.
+export const museumInvitations = {
+  nanjing: '沿金陵经纬，翻阅古都的岁月与匠心。',
+  wuxi: '循太湖烟水，细读泥火之间的江南风物。',
+  xuzhou: '从石上汉风出发，走近彭城的历史回声。',
+  changzhou: '循竹上留青，慢读龙城的文脉与手艺。',
+  suzhou: '借一窗园影，寻姑苏风雅的细微之处。',
+  nantong: '从蓝白纹样到江海记忆，翻开通城往事。',
+  lianyungang: '听山海回声，读港城漫长的人文足迹。',
+  huaian: '沿运河流韵，回望淮上城池与漕运往事。',
+  yancheng: '循盐风苇影，探寻海盐与一座城的来路。',
+  yangzhou: '展开半扇烟水，在运河与书页间读扬州。',
+  zhenjiang: '听古渡江声，在山水之间拾起城市记忆。',
+  taizhou: '循一城戏韵，走近水城的人文与日常。',
+  suqian: '从楚风水韵启程，读一方水土的岁月。',
+}
