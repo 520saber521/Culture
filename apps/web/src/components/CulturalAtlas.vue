@@ -1,6 +1,6 @@
 <template>
   <div ref="root" class="cultural-atlas" :class="{ 'atlas-active': active, 'in-city': phase !== 'overview', 'water-closeup': !!waterFocus }" :style="[anchorStyle, city ? { '--city-accent': cityVisuals[city.id].ink } : {}]">
-    <div class="atlas-orbit" aria-hidden="true"></div>
+    <AtlasLandscape />
     <AtlasMap :water-focus="waterFocus" @water-select="openWater" ref="mapRef" :active="active" :selected="city?.id" :hover="hover || (discoveryFocused ? discoveryEntry.cityId : null)" :phase="phase" :recent="reading.recentCity" :counts="theme === 'all' ? null : counts" :reduced="reduced" @select="enterCity" @hover="hover = $event" />
     <div class="overview-ui" :inert="phase !== 'overview' || !active">
       <nav class="water-entries" aria-label="水系近景">
@@ -15,8 +15,9 @@
         <a :href="waterStories[waterFocus].source" target="_blank" rel="noopener noreferrer">资料与延伸阅读 ↗</a>
         <a class="water-story-credit" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">水系 © OpenStreetMap</a>
       </section>
-      <header class="atlas-heading"><span class="eyebrow">JIANGSU / CULTURAL ATLAS</span><h2>江苏<br><em>文化地图</em><span class="title-seal">文脉</span></h2><p>循山水脉络，读十三城风雅。</p><div class="heading-rule"></div><span class="map-instruction">选择一座城，走进它的故事</span></header>
+      <header class="atlas-heading"><span class="eyebrow">JIANGSU / CULTURAL ATLAS</span><h2>江苏<br><em>文化地图</em><span class="title-seal">文脉</span></h2><p>循山水脉络，读十三城风雅。</p><div class="heading-rule"></div><span class="map-instruction">轻点城市区域，走进一座城</span></header>
       <div class="atlas-compass" aria-hidden="true"><span>北</span><i></i><small>N</small></div>
+      <span v-if="!waterFocus" class="atlas-sea-label">黄海</span>
       <aside v-if="theme === 'all'" class="discovery-card" aria-label="文化发现" @pointerenter="discoveryFocused = true" @pointerleave="discoveryFocused = false">
         <div class="discovery-heading"><span class="eyebrow">文化发现 / CULTURAL FIND</span><button @click="nextDiscovery" aria-label="换个文化发现">换个发现 ↻</button></div>
         <div class="discovery-story" :key="discoveryEntry.id">
@@ -42,13 +43,14 @@
     </section>
     <section v-if="item" ref="detailPanel" class="item-detail" role="dialog" aria-modal="true" :aria-label="item.title" @scroll.passive="rememberItem" data-atlas-scroll @keydown.tab="trapFocus">
       <div class="exhibition-top"><button ref="detailBack" @click="back">← 返回{{ city.name }}展场</button><span>{{ cities.find(c=>c.id===item.cityId)?.name }} / {{ item.category }}</span><button @click="share">分享条目 ↗</button></div>
-      <div class="detail-layout"><div class="detail-art"><AtlasArtwork :city-id="item.cityId" :title="item.title" :src="item.image" :media-id="item.id" /></div><article><span class="eyebrow">CULTURAL CLOSE-UP</span><h2>{{ item.title }}</h2><p class="detail-lead">{{ item.summary }}</p><p v-for="paragraph in item.body" :key="paragraph">{{ paragraph }}</p><h3>值得细看的三个地方</h3><ol><li v-for="point in item.observations" :key="point">{{ point }}</li></ol><div class="sources"><h3>资料与延伸阅读</h3><a v-for="source in item.sources" :key="source.url" :href="source.url" target="_blank" rel="noopener noreferrer">{{ source.title }} {{ source.kind === 'directory' ? '（资料入口）' : '' }} ↗</a><small>文字为文化导读；地域纹样为原创示意图，不作为文物或实景照片。</small></div><h3>沿着文脉继续看</h3><div class="related"><button v-for="related in relatedItems(item)" :key="related.id" @click="showRelated(related)">{{ related.title }} <span>↗</span></button></div></article></div>
+      <div class="detail-layout"><div class="detail-art"><AtlasArtwork :city-id="item.cityId" :title="item.title" :src="item.image" :media-id="item.id" variant="detail" /></div><article><span class="eyebrow">CULTURAL CLOSE-UP</span><h2>{{ item.title }}</h2><p class="detail-lead">{{ item.summary }}</p><p v-for="paragraph in item.body" :key="paragraph">{{ paragraph }}</p><h3>值得细看的三个地方</h3><ol><li v-for="point in item.observations" :key="point">{{ point }}</li></ol><div class="sources"><h3>资料与延伸阅读</h3><a v-for="source in item.sources" :key="source.url" :href="source.url" target="_blank" rel="noopener noreferrer">{{ source.title }} {{ source.kind === 'directory' ? '（资料入口）' : '' }} ↗</a><small>文字为文化导读；地域纹样为原创示意图，不作为文物或实景照片。</small></div><h3>沿着文脉继续看</h3><div class="related"><button v-for="related in relatedItems(item)" :key="related.id" @click="showRelated(related)">{{ related.title }} <span>↗</span></button></div></article></div>
     </section>
     <div v-if="notice" class="atlas-notice" role="status">{{ notice }}</div>
     <div v-if="manualLink" class="share-fallback"><label>复制此链接<input readonly :value="manualLink" @focus="$event.target.select()" aria-label="分享链接" /></label><button @click="manualLink = ''">关闭</button></div>
   </div>
 </template>
 <script setup>
+import AtlasLandscape from './AtlasLandscape.vue'
 import BrandButton from './BrandButton.vue'
 import { waterStories } from '@/data/atlas/water-stories'
 import CityMuseumLinks from './CityMuseumLinks.vue'
@@ -230,8 +232,6 @@ onBeforeUnmount(()=>{rememberCity();rememberItem();saveReading(storage,reading.v
 .cultural-atlas{position:relative;width:100%;height:100%;overflow:hidden;background:var(--brand-paper);color:var(--brand-ink);font-family:var(--brand-sans);--gold:var(--brand-deep-green);--serif:var(--brand-serif)}
 .cultural-atlas button{font:inherit;cursor:pointer}
 .cultural-atlas button:focus-visible,.cultural-atlas a:focus-visible{outline:2px solid var(--gold);outline-offset:5px}
-.atlas-orbit{position:absolute;width:65vw;height:65vw;left:29%;top:50%;transform:translateY(-50%);border:1px solid #92784b18;border-radius:50%;pointer-events:none}
-.atlas-orbit:after{content:'';position:absolute;inset:12%;border:1px solid #92784b12;border-radius:50%}
 .overview-ui{transition:opacity .3s}
 .in-city .overview-ui{opacity:0;pointer-events:none}
 .eyebrow{font-family:Georgia,serif;letter-spacing:.2em;font-size:10px;color:var(--gold)}
@@ -450,4 +450,18 @@ onBeforeUnmount(()=>{rememberCity();rememberItem();saveReading(storage,reading.v
  .water-story h2{font-size:25px;margin:10px 0 7px}.water-story h3{font-size:14px;margin-bottom:10px}.water-story p{font-size:12px;line-height:1.65;margin:8px 0}
  .water-story .eyebrow{font-size:9px}.water-story a{margin-top:5px}.water-story .water-story-credit{display:inline-block;margin-left:16px;font-size:9px}
 }
+</style>
+<style scoped>
+.cultural-atlas:before{display:none}
+.water-closeup :deep(.distant-shore){opacity:.25}
+.theme-row{background:transparent}
+.atlas-sea-label{position:absolute;right:10%;top:57%;font:400 17px var(--brand-serif);letter-spacing:.5em;color:#f6f8ed;text-shadow:0 1px 4px #143943a6;pointer-events:none}
+.atlas-compass{top:36%;right:10%;color:#edf2e9;text-shadow:0 1px 3px #14394399;pointer-events:none}
+.atlas-compass i{background:linear-gradient(#e0eeea,transparent)}
+@media(min-width:1150px){
+ .cultural-atlas:not(.water-closeup) .water-entries{top:auto;bottom:74px;right:calc(7% + 186px);background:transparent}
+ .roam-entry{top:auto;bottom:70px;right:7%}
+ .roam-entry>span,.roam-entry small{display:none}
+}
+@media(max-width:880px){.atlas-sea-label{display:none}}
 </style>

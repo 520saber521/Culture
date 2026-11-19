@@ -17,6 +17,9 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "@react-three/postprocessing": "^3.2.2",
     "@surely-vue/table": "^5.0.12",
     "@tiptap/pm": "^3.33.0",
     "@tiptap/starter-kit": "^3.33.0",
@@ -24,8 +27,12 @@
     "echarts": "^6.1.0",
     "element-plus": "^2.11.4",
     "fullpage.js": "^4.0.37",
+    "leva": "^0.10.1",
     "maplibre-gl": "^6.17.0",
     "motion-v": "^2.11.1",
+    "postprocessing": "^6.39.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "three": "^0.187.0",
     "vue": "^3.5.22",
     "vue-router": "^4.5.1"

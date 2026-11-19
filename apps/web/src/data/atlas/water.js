@@ -2,11 +2,29 @@ import data from './water-geometry.json'
 
 // All coordinates are in the same local map space as geometry.js.
 export const waterBodies = data.water
+export const yangtzeFlow = data.flow.slice(0, 2)
 export const dryLand = data.land
 export const lakeIslands = data.islands
-export const waterPath = polygons => polygons.map(p => p.map(r => r.map(([x,y],i) => `${i ? 'L' : 'M'}${x},${-y}`).join(' ')+'Z').join(' ')).join(' ')
+export const waterLines = data.waterLines || {}
+export const landEdges = data.landEdges
+// Subpixel shoreline remnants retain their exact top faces, without tall,
+// needle-like side walls in lake close-ups. No geographic polygon is removed.
+export function hasRelief(rings) {
+  const ring=rings[0];let area=0,perimeter=0
+  for(let i=1;i<ring.length;i++) {const a=ring[i-1],b=ring[i];area+=a[0]*b[1]-b[0]*a[1];perimeter+=Math.hypot(b[0]-a[0],b[1]-a[1])}
+  return Math.abs(area)/2/Math.max(perimeter,.00001)>.04
+}
+const pathCache=new WeakMap()
+export function linePath(lines) {
+  if(!pathCache.has(lines))pathCache.set(lines,lines.map(line => line.map(([x,y],i) => `${i?'L':'M'}${x},${-y}`).join(' ')).join(' '))
+  return pathCache.get(lines)
+}
+export function waterPath(polygons) {
+  if(!pathCache.has(polygons))pathCache.set(polygons,polygons.map(p => p.map(r => r.map(([x,y],i) => `${i ? 'L' : 'M'}${x},${-y}`).join(' ')+'Z').join(' ')).join(' '))
+  return pathCache.get(polygons)
+}
 export const waterStyle = Object.freeze({
-  level: 6.85, river: '#789994', lake: '#86a6a0',
+  level: 6.85, river: '#789994', lake: '#86a6a0', seasonal: '#8b9e91', detail: '#86a6a0', channel: '#789994',
   light: '#e5e8d3', speed: .48, reflection: .065,
   desktopFps: 40, mobileFps: 24,
 })
@@ -25,9 +43,22 @@ const segments = data.flow.flatMap(line => line.slice(1).map((b,i) => {
   const a=line[i], dx=b[0]-a[0],dy=b[1]-a[1], length=Math.hypot(dx,dy)
   return { a,b,dx,dy,length, length2:length*length }
 })).filter(s => s.length > 0)
-export function flowAt(x,y) {
-  let nearest=Infinity, result=[0,0,1,0]
-  for(const s of segments) {
+// Spatial bins keep province-wide flow sampling local (rather than scanning
+// every stream per vertex). Unknown flow stays calm; it never borrows Yangtze UVs.
+const flowGrid=new Map(), cell=8, radius=2
+for(const line of data.networkFlow || []) for(let i=1;i<line.length;i++) {
+  const a=line[i-1],b=line[i],dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy)
+  if(!length)continue
+  const s={a,b,dx,dy,length,length2:length*length}
+  for(let x=Math.floor((Math.min(a[0],b[0])-radius)/cell);x<=Math.floor((Math.max(a[0],b[0])+radius)/cell);x++)
+    for(let y=Math.floor((Math.min(a[1],b[1])-radius)/cell);y<=Math.floor((Math.max(a[1],b[1])+radius)/cell);y++) {
+      const key=`${x},${y}`;if(!flowGrid.has(key))flowGrid.set(key,[]);flowGrid.get(key).push(s)
+    }
+}
+export function flowAt(x,y,network=false) {
+  let nearest=network?radius*radius:Infinity, result=network?[0,0,0,0]:[0,0,1,0]
+  const candidates=network?(flowGrid.get(`${Math.floor(x/cell)},${Math.floor(y/cell)}`)||[]):segments
+  for(const s of candidates) {
     const t=Math.max(0,Math.min(1,((x-s.a[0])*s.dx+(y-s.a[1])*s.dy)/s.length2))
     const dx=x-s.a[0]-t*s.dx,dy=y-s.a[1]-t*s.dy, distance=dx*dx+dy*dy
     if(distance<nearest) {
@@ -80,13 +111,14 @@ const fragmentShader = /* glsl */`
       +sin(dot(p,vec2(-0.37,0.79))+t*0.39)*0.032
       +sin(dot(p,vec2(1.18,-0.27))-t*0.67+noise(p*0.19)*1.4)*0.015;
   }
-  float surface(vec2 p) { return uLake>0.5 ? lake(p) : river(p); }
+  bool calm() { return uLake>0.5 || dot(vFlow.zw,vFlow.zw)<0.25; }
+  float surface(vec2 p) { return calm() ? lake(p) : river(p); }
   void main() {
-    vec2 p=uLake>0.5 ? vMap : vFlow.xy;
+    vec2 p=calm() ? vMap : vFlow.xy;
     float h=surface(p);
     vec2 slope=vec2(surface(p+vec2(0.12,0))-surface(p-vec2(0.12,0)),
                     surface(p+vec2(0,0.12))-surface(p-vec2(0,0.12)))/0.24;
-    if(uLake<0.5) {
+    if(!calm()) {
       vec2 tangent=normalize(vFlow.zw);
       slope=tangent*slope.x+vec2(-tangent.y,tangent.x)*slope.y;
     }
@@ -125,31 +157,50 @@ function refineRiver(T, geometry) {
 }
 
 export function createWater(T, options={}) {
-  const config={...waterStyle,...options}, group=new T.Group(), meshes=[]
+  const config={...waterStyle,...options}, group=new T.Group(), meshes=[], cityLayers=[], lineMaterials=[]
   for(const body of waterBodies) {
     let geometry=new T.ShapeGeometry(makeShapes(T,body.polygons))
     if(body.kind==='river') geometry=refineRiver(T,geometry)
     const pos=geometry.getAttribute('position'), flow=new Float32Array(pos.count*4)
-    for(let i=0;i<pos.count;i++) flow.set(body.kind==='river' ? flowAt(pos.getX(i),pos.getY(i)) : [0,0,1,0],i*4)
+    for(let i=0;i<pos.count;i++) flow.set(body.kind==='river' ? flowAt(pos.getX(i),pos.getY(i),body.network) : [0,0,1,0],i*4)
     geometry.setAttribute('flow',new T.BufferAttribute(flow,4))
     const material=new T.ShaderMaterial({ vertexShader,fragmentShader,uniforms:{
       uTime:{value:0},uLake:{value:body.kind==='lake'?1:0},uSpeed:{value:config.speed},
-      uReflection:{value:config.reflection},uColor:{value:new T.Color(config[body.kind])},
+      uReflection:{value:body.seasonal?0:config.reflection},uColor:{value:new T.Color(config[body.seasonal?'seasonal':body.detail?'detail':body.kind])},
       uLight:{value:new T.Color(config.light)},uHover:{value:0},uPointer:{value:new T.Vector2(-1000,-1000)},
     } })
-    const mesh=new T.Mesh(geometry,material);mesh.position.z=config.level
-    mesh.userData.water=body.id;group.add(mesh);meshes.push(mesh)
+    const mesh=new T.Mesh(geometry,material);mesh.position.z=body.detail?7.025:config.level
+    mesh.userData.water=body.id;mesh.userData.seasonal=body.seasonal;group.add(mesh);meshes.push(mesh)
+    if(body.city)cityLayers.push({city:body.city,object:mesh})
+  }
+  // Centreline-only records remain thin survey paths: no invented river width.
+  // Shared materials and merged city geometry keep tens of thousands of paths
+  // to at most three draw calls per city. Seasonal channels remain static/muted.
+  for(const family of ['major','minor','seasonal']) {
+    const material=new T.LineBasicMaterial({color:config[family==='seasonal'?'seasonal':'channel'],transparent:true,opacity:family==='major'?.72:.36,depthWrite:false})
+    lineMaterials.push({family,material})
+    for(const [city,families] of Object.entries(waterLines)) {
+      const vertices=[]
+      for(const line of families[family] || [])for(let i=1;i<line.length;i++)vertices.push(...line[i-1],7.04,...line[i],7.04)
+      if(!vertices.length)continue
+      const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(vertices,3))
+      const object=new T.LineSegments(geometry,material);group.add(object);cityLayers.push({city,object})
+    }
   }
   let hovered=null
-  return { group,meshes,
+  // Only the two existing story surfaces participate in pointer raycasts. The
+  // dense province network remains visual; city hit surfaces still work beneath it.
+  return { group,meshes:meshes.filter(mesh=>['yangtze','taihu'].includes(mesh.userData.water)),
+    attachCity(city,parent) { for(const layer of cityLayers)if(layer.city===city)parent.add(layer.object) },
     hover(hit) {
       hovered=hit?.object || null
       if(hit) hovered.material.uniforms.uPointer.value.copy(hit.point)
     },
-    update(time,dt,reduced) {
+    update(time,dt,reduced,zoom=1) {
+      for(const {family,material} of lineMaterials)material.opacity=family==='major'?.72:family==='seasonal'?.3:Math.min(.6,.36+(zoom-1)*.06)
       for(const mesh of meshes) {
         const u=mesh.material.uniforms
-        u.uTime.value=time
+        u.uTime.value=mesh.userData.seasonal?0:time
         const amount=!reduced && mesh===hovered ? 1 : 0
         u.uHover.value+=(amount-u.uHover.value)*(1-Math.exp(-dt*5))
       }

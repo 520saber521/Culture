@@ -1,12 +1,7 @@
 <template>
   <section v-if="museums.length" class="city-museums" :data-city="identity.cityId" :style="{ '--museum-ink': visual.ink, '--museum-paper': visual.paper }" :aria-label="`${identity.cityName}城市博物馆`">
     <div class="museum-intro">
-      <div class="museum-portrait">
-        <img v-if="!imageFailed" :src="cover.src" alt="" :style="{ objectPosition: cover.position }" loading="lazy" @error="imageFailed = true" />
-        <span v-else class="museum-image-fallback" aria-hidden="true">{{ identity.cityName }}</span>
-        <span class="museum-city-label">{{ identity.cityName }}</span>
-        <span class="museum-image-caption">城市意象</span>
-      </div>
+      <div class="museum-ticket"><span class="museum-city-label">{{ identity.cityName }}</span><span class="museum-ticket-note">一城一馆 · 由此入卷</span></div>
       <div class="museum-intro-copy"><span class="museum-kicker">{{ identity.cityId.toUpperCase() }} / 城市文脉</span>
         <h3>{{ visual.label }}</h3>
         <p>{{ museumInvitations[identity.cityId] }}</p>
@@ -27,27 +22,22 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { cityMuseums, museumsForCity, museumInvitations } from '@/data/atlas/museums'
-import { cityVisuals, getMedia } from '@/data/atlas/visuals'
+import { cityVisuals } from '@/data/atlas/visuals'
 
 const props = defineProps({ city: { type: String, required: true } })
 const museums = computed(() => museumsForCity(props.city))
 const identity = computed(() => cityMuseums.find(c => c.cityId === props.city || c.cityName === props.city))
 const visual = computed(() => cityVisuals[identity.value?.cityId] || {})
-const cover = computed(() => getMedia(identity.value?.cityId))
-const imageFailed = ref(false)
-watch(() => props.city, () => { imageFailed.value = false })
 </script>
 
 <style scoped>
 .city-museums{display:grid;grid-template-columns:minmax(240px,.8fr) minmax(0,1.5fr);margin:0 0 44px;background:var(--brand-surface);border:1px solid var(--brand-line);color:var(--brand-ink);font-family:var(--brand-sans)}
 .museum-intro{min-width:0;background:var(--museum-paper);color:var(--museum-ink);border-right:1px solid var(--brand-line)}
-.museum-portrait{position:relative;height:135px;overflow:hidden;background:var(--museum-paper)}
-.museum-portrait img{display:block;width:100%;height:100%;object-fit:cover}
-.museum-city-label{position:absolute;left:20px;top:0;padding:16px 11px 12px;background:var(--museum-paper);color:var(--museum-ink);writing-mode:vertical-rl;font:400 28px/1.1 var(--brand-display);letter-spacing:5px;border-bottom:3px solid var(--museum-ink)}
-.museum-image-caption{position:absolute;right:10px;bottom:10px;padding:3px 6px;background:var(--brand-paper);color:var(--brand-ink);font-size:10px;letter-spacing:.12em}
-.museum-image-fallback{display:grid;place-items:center;height:100%;font:400 62px var(--brand-serif);opacity:.18}
+.museum-ticket{display:flex;align-items:center;gap:18px;padding:24px 24px 0}
+.museum-city-label{padding:8px 5px;border:1px solid currentColor;font:400 27px/1.1 var(--brand-display);writing-mode:vertical-rl;letter-spacing:5px}
+.museum-ticket-note{font:13px var(--brand-serif);letter-spacing:.12em}
 .museum-intro-copy{padding:20px 24px 24px}
 .museum-kicker{font-size:10px;letter-spacing:.12em;color:var(--museum-ink)}
 .museum-intro h3{margin:8px 0;font:400 25px/1.4 var(--brand-serif);letter-spacing:.12em}
@@ -64,6 +54,6 @@ watch(() => props.city, () => { imageFailed.value = false })
 .museum-link:focus-visible,.museum-alternate:focus-visible{outline:2px solid var(--brand-red);outline-offset:4px}
 .museum-alternate{display:inline-flex;align-items:center;min-height:44px;gap:10px;color:var(--brand-deep-green);font-size:12px;text-underline-offset:4px}
 .museum-note{display:block;margin-top:8px;font-size:11px;line-height:1.8;color:var(--brand-deep-green)}
-@media(max-width:720px){.city-museums{grid-template-columns:1fr;margin-bottom:32px}.museum-intro{border-right:0;border-bottom:1px solid var(--brand-line)}.museum-portrait{height:120px}.museum-intro-copy{padding:16px 20px}.museum-intro h3{font-size:23px}.museum-list{padding:20px}.museum-link{gap:12px}.museum-name strong{font-size:18px}.museum-action{font-size:12px}.museum-action span{margin-left:3px}}
+@media(max-width:720px){.city-museums{grid-template-columns:1fr;margin-bottom:32px}.museum-intro{border-right:0;border-bottom:1px solid var(--brand-line)}.museum-intro-copy{padding:16px 20px}.museum-intro h3{font-size:23px}.museum-list{padding:20px}.museum-link{gap:12px}.museum-name strong{font-size:18px}.museum-action{font-size:12px}.museum-action span{margin-left:3px}}
 @media(max-width:360px){.museum-link{align-items:flex-start;flex-direction:column;gap:6px}.museum-action{align-self:flex-end}}
 </style>

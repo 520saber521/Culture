@@ -1,6 +1,12 @@
 <template>
   <div class="atlas-art" :style="{ '--art-ink': visual.ink, '--art-paper': visual.paper }" :class="{ 'has-photo': source && !failed }">
     <img v-if="source && !failed" :src="source" :style="{ '--cover-position': media.position || '50% 50%', '--cover-position-mobile': media.mobilePosition || media.position || '50% 50%' }" :alt="media.alt || title" :loading="priority ? 'eager' : 'lazy'" :fetchpriority="priority ? 'high' : 'auto'" decoding="async" @load="emit('photo-state', true)" @error="failed = true; emit('photo-state', false)" />
+    <div v-else-if="media.kind" class="media-reservation" :data-media-slot="`${media.entryId}:${media.kind}`">
+      <span class="reservation-kicker">{{ media.kind === 'detail' ? '细看 / DETAIL' : '观物 / PORTRAIT' }}</span>
+      <span class="reservation-title">{{ title }}</span>
+      <span class="reservation-rule" aria-hidden="true"></span>
+      <span class="reservation-note">{{ media.kind === 'detail' ? '细节影像待补' : '主题影像待补' }}</span>
+    </div>
     <template v-else>
       <svg class="art-motif" viewBox="0 0 600 400" aria-hidden="true">
         <defs><pattern :id="patternId" width="72" height="72" patternUnits="userSpaceOnUse"><g fill="none" stroke="currentColor" stroke-width="1">
@@ -34,18 +40,23 @@
 import { computed, ref, watch, useId } from 'vue'
 import { cityVisuals, getMedia } from '@/data/atlas/visuals'
 import { regions, cityViewBox } from '@/data/atlas/geometry'
-const props = defineProps({ cityId: String, title: String, src: String, mediaId: String, priority: Boolean, index: { type: Number, default: 0 } })
+const props = defineProps({ cityId: String, title: String, src: String, mediaId: String, variant: { type: String, default: 'overview' }, priority: Boolean, index: { type: Number, default: 0 } })
 const emit = defineEmits(['photo-state'])
 const failed = ref(false)
 const patternId = `atlas-pattern-${useId()}`
-const media = computed(() => getMedia(props.mediaId || props.cityId))
-const source = computed(() => props.src || media.value.src)
+const media = computed(() => getMedia(props.mediaId || props.cityId, props.variant))
+const source = computed(() => media.value.kind === 'detail' ? media.value.src : props.src || media.value.src)
 const visual = computed(() => cityVisuals[props.cityId] || cityVisuals.nanjing)
 watch(source, () => { failed.value = false; emit('photo-state', false) })
 const region = computed(() => regions.find(r => r.id === props.cityId))
 </script>
 <style scoped>
 .atlas-art{position:relative;overflow:hidden;min-height:140px;height:100%;background:var(--art-paper);color:var(--art-ink)}
+.media-reservation{position:absolute;inset:18px;border:1px solid currentColor;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:16px;gap:15px;opacity:.85}
+.reservation-kicker{font-size:10px;letter-spacing:.15em}
+.reservation-title{font:400 clamp(19px,2.3vw,34px)/1.5 var(--brand-serif);text-wrap:balance}
+.reservation-rule{width:36px;height:1px;background:currentColor}
+.reservation-note{font-size:12px;letter-spacing:.12em}
 .atlas-art:after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,#65543b05 4px);pointer-events:none}
 .atlas-art img{width:100%;height:100%;object-fit:cover;object-position:var(--cover-position);display:block}
 .has-photo:after{background:none}

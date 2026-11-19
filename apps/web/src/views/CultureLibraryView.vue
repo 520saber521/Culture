@@ -13,9 +13,9 @@
         <p v-else class="cover-footnote">山水有情 · 文脉有声 · 风物有味</p>
       </div>
       <figure class="cover-image">
-        <img src="/background5.png" alt="暮色中的江南水巷、画舫与临水楼阁" fetchpriority="high">
-        <span class="image-slip" aria-hidden="true">水巷深处<br>人间江南</span>
-        <figcaption><span>风物序章 / 江南暮色</span><span>LAND · LIFE · CULTURE</span></figcaption>
+        <CultureMedia role="hero" />
+
+        <figcaption><span>风物序章 / 江苏风物</span><span>LAND · LIFE · CULTURE</span></figcaption>
       </figure>
     </header>
 
@@ -46,7 +46,7 @@
           <div class="group-heading"><h3><span>{{ group.number }}</span>{{ group.title }}</h3><p>{{ group.note }} <span class="record-count">/ {{ group.items.length }} 则</span></p></div>
           <div class="collection-grid" :class="{ 'has-feature': group.key === 'attraction' && group.items.length >= 3 }">
             <button v-for="(item, index) in group.items" :key="item.id" class="culture-card" :class="{ featured: group.key === 'attraction' && index === 0 && group.items.length >= 3 }" @click="openDetail(item)">
-              <div class="card-image"><img v-if="item.imageUrl && !brokenImages[item.imageUrl]" :src="item.imageUrl" :alt="item.name" loading="lazy" @error="markBroken(item.imageUrl)"><div v-else class="image-missing"><GardenLine /><span>影像待补 · {{ item.name }}</span></div><span v-if="item.level" class="card-badge">{{ item.level }}</span><span v-if="item.imageUrl && !brokenImages[item.imageUrl]" class="image-action" aria-hidden="true">阅览 ↗</span></div>
+              <div class="card-image"><CultureMedia :item="item" /><span v-if="item.level" class="card-badge">{{ item.level }}</span><span class="image-action" aria-hidden="true">阅览 ↗</span></div>
               <div class="card-copy"><p class="card-kicker">{{ selectedCity }} / {{ group.title }} <span>{{ String(index + 1).padStart(2, '0') }}</span></p><h4>{{ item.name }}</h4><p class="card-description">{{ item.description || item.history }}</p><div v-if="item.highlights?.length" class="card-tags"><span v-for="tag in item.highlights.slice(0, 3)" :key="tag">{{ tag }}</span></div><p v-if="item.featureType === 'activity'" class="card-meta">{{ [item.crowd, item.season].filter(Boolean).join(' · ') }}</p><p v-if="item.featureType === 'food' && item.taste" class="card-meta">{{ item.taste }}</p></div>
             </button>
           </div>
@@ -56,13 +56,14 @@
       <div class="endnote"><span>江苏文化数字图鉴</span><span>一方风土，值得慢慢看。</span></div>
     </div>
     <el-dialog v-model="showDetail" :title="selectedItem?.name || '风物详情'" width="min(760px, calc(100vw - 32px))" class="culture-detail-dialog" destroy-on-close>
-      <article v-if="selectedItem" class="detail-body"><img v-if="selectedItem.imageUrl && !brokenImages[selectedItem.imageUrl]" class="detail-image" :src="selectedItem.imageUrl" :alt="selectedItem.name" @error="markBroken(selectedItem.imageUrl)"><p class="eyebrow">{{ selectedItem.city || selectedCity }}<span v-if="selectedItem.level"> · {{ selectedItem.level }}</span></p><p v-if="selectedItem.description">{{ selectedItem.description }}</p><div v-if="selectedItem.highlights?.length" class="card-tags"><span v-for="tag in selectedItem.highlights" :key="tag">{{ tag }}</span></div><section v-for="field in detailFields.filter(field => selectedItem[field.key])" :key="field.key"><h3>{{ field.label }}</h3><p>{{ selectedItem[field.key] }}</p></section></article>
+      <article v-if="selectedItem" class="detail-body"><CultureMedia :item="selectedItem" role="detail" /><p class="eyebrow">{{ selectedItem.city || selectedCity }}<span v-if="selectedItem.level"> · {{ selectedItem.level }}</span></p><p v-if="selectedItem.description">{{ selectedItem.description }}</p><div v-if="selectedItem.highlights?.length" class="card-tags"><span v-for="tag in selectedItem.highlights" :key="tag">{{ tag }}</span></div><section v-for="field in detailFields.filter(field => selectedItem[field.key])" :key="field.key"><h3>{{ field.label }}</h3><p>{{ selectedItem[field.key] }}</p></section></article>
     </el-dialog>
   </main>
 </template>
 
 <script setup>
 import BrandButton from '@/components/BrandButton.vue'
+import CultureMedia from '@/components/CultureMedia.vue'
 import CityMuseumLinks from '@/components/CityMuseumLinks.vue'
 function openCities() { window.location.hash = 'cities' }
 import { ref, computed, onMounted, onUnmounted, h } from 'vue'
@@ -84,7 +85,6 @@ const selectedCity = computed(() => cities.includes(route.query.city) ? route.qu
 const records = ref([])
 const loading = ref(true)
 const loadError = ref(false)
-const brokenImages = ref({})
 const showDetail = ref(false)
 const selectedItem = ref(null)
 let disposed = false
@@ -106,7 +106,6 @@ const detailFields = [{ key: 'history', label: '历史背景' }, { key: 'taste',
 function selectCity(city) { router.replace({ path: '/culture', query: { ...route.query, city }, hash: route.hash }) }
 function chooseAnotherCity() { if (availableOtherCity.value) selectCity(availableOtherCity.value); else document.getElementById('cities')?.scrollIntoView({ behavior: 'smooth' }) }
 function openDetail(item) { selectedItem.value = item; showDetail.value = true }
-function markBroken(url) { brokenImages.value[url] = true }
 async function loadFeatures() {
   loading.value = true
   loadError.value = false

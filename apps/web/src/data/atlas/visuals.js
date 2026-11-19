@@ -1,3 +1,4 @@
+import { entryMediaSlots } from './mediaSlots.js'
 // Original decorative interpretations, not reproductions of artifacts.
 export const cityVisuals = Object.fromEntries([
   ['nanjing','#82524c','#e9dace','weave','金陵经纬','cloud-brocade'],
@@ -41,8 +42,8 @@ for (const [id,name,position,mobilePosition] of cityCovers) {
   atlasMedia[id] = { ...atlasMedia[id], src:`/images/atlas/${id}-hero.webp`, position, mobilePosition,
     alt:`${name}城市封面`, provenance:'用户提供，城市对应关系已确认', license:'' }
 }
-export function getMedia(id) {
-  return atlasMedia[id] || { src:null, position:'50% 50%', alt:'', credit:'', sourceUrl:'', license:'' }
+export function getMedia(id, variant = 'overview') {
+  return entryMediaSlots[`${id}:${variant}`] || atlasMedia[id] || { src:null, position:'50% 50%', alt:'', credit:'', sourceUrl:'', license:'' }
 }
 export function exhibitionItems(city, theme='all') {
   if (!city) return []
